@@ -125,7 +125,7 @@ export class Chat {
         });
 
         this.peer.on('error', (e) => {
-            console.log('Error');
+            console.log(e);
         });
 
         this.peer.on('connection', (conn) => {
