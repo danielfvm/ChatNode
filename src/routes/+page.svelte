@@ -1,12 +1,12 @@
 <script>
 	import { onMount } from 'svelte';
+	import { Chat, MessageData, tryParse } from './connection';
 
 	import Header from './Header.svelte';
 	import Info from './Info.svelte';
 	import Message from './Message.svelte';
 	import Chatbox from './Chatbox.svelte';
 	import Profile from './Profile.svelte';
-	import { Chat, MessageData, tryParse } from './connection';
 
 	import defaultProfilePicture from '$lib/images/profile.png';
 
