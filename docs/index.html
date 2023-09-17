@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="./favicon.png" />
+		<meta name="viewport" content="width=device-width" />
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+		<script src="https://unpkg.com/peerjs@1.5.0/dist/peerjs.min.js"></script>
+		
+		<link href="./_app/immutable/assets/0.f22c673e.css" rel="stylesheet">
+		<link href="./_app/immutable/assets/2.5b9caa90.css" rel="stylesheet">
+		<link rel="modulepreload" href="./_app/immutable/entry/start.2d9e958d.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/scheduler.2ea0213c.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/singletons.a527e3ac.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/app.dae2833a.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/index.31de4a22.js">
+		<link rel="modulepreload" href="./_app/immutable/nodes/0.f946d1bf.js">
+		<link rel="modulepreload" href="./_app/immutable/nodes/2.8b820f0d.js"><title>Chat Node</title><!-- HEAD_svelte-17u2ueb_START --><meta name="description" content="Svelte demo app"><meta name="author" content="DeanCode"><meta name="description" content="A hackable decentralized chat platform"><!-- HEAD_svelte-17u2ueb_END -->
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">  <div class="app svelte-15e6m5n"><main class="svelte-15e6m5n"> <header class="svelte-f42csy"><div class="start svelte-f42csy"> <div class="chat svelte-f42csy" data-svelte-h="svelte-1byf1au"><i class="bi bi-plus-circle-fill svelte-f42csy"></i></div></div> <div class="end svelte-f42csy"><div class="profile svelte-f42csy"><div class="name svelte-f42csy">Guest7908</div> <div class="image-cropper svelte-f42csy"><img draggable="false" oncontextmenu="return false;" src="/_app/immutable/assets/profile.2d99523a.png" alt="Profile picture" class="svelte-f42csy"></div></div></div> </header>   <h1 class="svelte-lbsluw" data-svelte-h="svelte-o4zb03">Welcome to Chat Node</h1> <p class="svelte-lbsluw" data-svelte-h="svelte-t38yq1">Click on the plus icon to create a new chat, share the link and start chatting!</p></main> <ul class="circles svelte-15e6m5n" data-svelte-h="svelte-1bpmkw7"><li class="svelte-15e6m5n"></li> <li class="svelte-15e6m5n"></li> <li class="svelte-15e6m5n"></li> <li class="svelte-15e6m5n"></li> <li class="svelte-15e6m5n"></li> <li class="svelte-15e6m5n"></li> <li class="svelte-15e6m5n"></li> <li class="svelte-15e6m5n"></li> <li class="svelte-15e6m5n"></li> <li class="svelte-15e6m5n"></li></ul> </div> 
+			
+			<script>
+				{
+					__sveltekit_1sppkv3 = {
+						base: new URL(".", location).pathname.slice(0, -1),
+						env: {}
+					};
+
+					const element = document.currentScript.parentElement;
+
+					const data = [null,null];
+
+					Promise.all([
+						import("./_app/immutable/entry/start.2d9e958d.js"),
+						import("./_app/immutable/entry/app.dae2833a.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element, {
+							node_ids: [0, 2],
+							data,
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>
