@@ -42,10 +42,8 @@
 		width: calc(100vw - 300px);
 		height: 44px;
 		scroll-direction: horizontal;
-		overflow-x: auto;
-		overflow-y: hidden;
+		overflow: hidden;
 		white-space: nowrap;
-		overflow: scroll;
 		scrollbar-color: rgba(0, 0, 0, 0.5) transparent;
 		scrollbar-width: 3px;
 	}
@@ -139,10 +137,8 @@
 		color: lightgray;
 		max-width: 280px;
 		scroll-direction: horizontal;
-		overflow-x: auto;
-		overflow-y: hidden;
 		white-space: nowrap;
-		overflow: scroll;
+		overflow: hidden;
 		scrollbar-color: rgba(0, 0, 0, 0.5) transparent;
 		scrollbar-width: 3px;
 
