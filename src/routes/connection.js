@@ -24,21 +24,23 @@ export class User {
         // Remove user if not connected after 1 second
         setTimeout(() => {
             if (!this.isConnected()) {
+                console.log("Timeout after 3sec");
                 this.chat.removeUser(this);
             }
-        }, 1000);
+        }, 3000);
 
         this.conn.on('open', () => {
-            console.log('Now open!');
+            console.log('Now connected to: ' + this.conn.peer);
             this.conn.on('data', (data) => this.handleData(data));
 
             setTimeout(() => {
                 onOpen();
                 this.sendData({type: 'profile', profile: this.chat.profile, chat: chat.name});
-            }, 100);
+                console.log('Send profile after 500ms');
+            }, 500);
         });
 
-        this.conn.on('close', () => console.log("!close") || this.chat.removeUser(this));
+        this.conn.on('close', () => console.trace() || console.log("!close") || this.chat.removeUser(this));
         this.conn.on('error', (_) => console.log("!error") || this.chat.removeUser(this));
     }
 
@@ -113,7 +115,7 @@ export class Chat {
 
         this.peer = new Peer();
         this.peer.on('open', (id) => {
-            console.log(id);
+            console.log("Your peer id: " + id);
             this.peerId = id;
 
             this.onOpen();
@@ -129,7 +131,7 @@ export class Chat {
         });
 
         this.peer.on('connection', (conn) => {
-            console.log("connection!");
+            console.log("Connection from: " + conn.peer);
             this.addUser(new User(this, conn));
         });
     }
@@ -139,7 +141,7 @@ export class Chat {
         if (!this.users.find(u => u.conn.peer == user.conn.peer))
             this.users.push(user);
 
-        console.log("add", this.users);
+        console.log("add", this.users.map(u => u.conn.peer));
     }
 
     writeMessage(msg) {
@@ -159,7 +161,7 @@ export class Chat {
             this.users[idx].closeConnection();
             this.users.splice(idx, 1);
         }
-        console.log("rem", idx, this.users);
+        console.log("rem", idx, this.users.map(u => u.conn.peer));
     }
 
     // Send a message to everyone except the defined user in exclude
