@@ -53,7 +53,7 @@
 
 			const textLen = message ? message.innerText.trim().length : 0;
 
-			if (e.key == 'Enter') {
+/*			if (e.key == 'Enter') {
 				setTimeout(
 					() =>
 						window.scrollBy({
@@ -63,7 +63,7 @@
 						}),
 					3
 				);
-			}
+			}*/
 
 			if (!e.shiftKey && e.key == 'Enter' && textLen > 0) {
 				send();

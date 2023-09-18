@@ -57,10 +57,7 @@
 	}
 
 	function sendMessage(text) {
-		// TODO: networking
 		selectedChat.writeMessage(new MessageData(text, { profile: profile }));
-		console.log(selectedChat.messages);
-		//selectedChat.messages = selectedChat.messages;
 	}
 
 	function showProfilePic(message) {
@@ -93,6 +90,15 @@
 		chat.onMessage = (_message) => {
 			if (chat != selectedChat) return;
 			selectedChat.messages = selectedChat.messages;
+
+			if (document.body.scrollHeight > document.documentElement.scrollTop + document.body.clientHeight / 2)
+			setTimeout(() => {
+				window.scrollBy({
+					left: 0,
+					top: document.body.scrollHeight,
+					behavior: 'smooth'
+				});
+			}, 30);
 		};
 
 		chats = [...chats, chat];

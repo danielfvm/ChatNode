@@ -16,10 +16,17 @@
 	let gifs = [];
 	let timeout;
 	let tempPicture;
+	let next = '0';
+	let scrolled = false;
+	let hoverText = null;
 
-	fetch('https://g.tenor.com/v1/trending?key=LIVDSRZULELA&limit=16')
+	fetch('https://g.tenor.com/v1/trending?key=LIVDSRZULELA&limit=8')
 		.then((res) => res.json())
-		.then((data) => gifs = data.results);
+		.then((data) => {
+			gifs = data.results;
+			next = data.next;
+			console.log(gifs);
+		});
 
 	function changeMenu(index) {
 		entries.forEach((entry) => entry.classList.remove('selected'));
@@ -29,6 +36,10 @@
 		items[index].style.display = 'block';
 		search = '';
 
+		if (index == 1) {
+			items[1].children[0].scrollTop = 0;
+		}
+
 		if (index == 2) {
 			document.getElementById('file-to-upload').click();
 		}
@@ -37,13 +48,28 @@
 	function searchGifs() {
 		if (timeout) clearTimeout(timeout);
 		timeout = setTimeout(() => {
-			fetch('https://g.tenor.com/v1/search?q=' + encodeURI(search) + '&key=LIVDSRZULELA&limit=16')
+			fetch(
+				'https://g.tenor.com/v1/search?q=' +
+					encodeURI(search) +
+					'&key=LIVDSRZULELA&limit=8&pos=' +
+					next
+			)
 				.then((res) => res.json())
 				.then((data) => {
-					gifs = data.results;
-					items[1].children[0].scrollTop = 0;
+					gifs = [...gifs, ...data.results];
+					next = data.next;
 				});
 		}, 500);
+	}
+
+	function loadOnScroll(e) {
+		const scroll = e.scrollTop > e.scrollTopMax - e.clientHeight * 2;
+
+		if (scrolled != scroll) {
+			searchGifs();
+		}
+
+		scrolled = scroll;
 	}
 
 	$: if (files && files.length > 0) {
@@ -52,12 +78,11 @@
 		if (files[0].size >= 1024 * 1024) {
 			alert('File is too large');
 		} else {
-			FR.addEventListener('load', (evt) => {
-				tempPicture = evt.target.result
-			});
+			FR.addEventListener('load', (evt) => (tempPicture = evt.target.result));
 			FR.readAsDataURL(files[0]);
 		}
 	}
+	
 </script>
 
 {#if visible}
@@ -76,37 +101,67 @@
 		<div bind:this={items[0]} class="item shadow" style="display: block">
 			<div class="item-list grid5">
 				{#each emojis.filter((x) => !search || x[1].includes(search)) as emoji}
-					<div on:click={() => dispatch("emoji", emoji[0])} class="hover emoji">{emoji[0]}</div>
+					<div
+						on:click={() => dispatch('emoji', emoji[0])}
+						class="hover emoji"
+						on:mouseenter={() => (hoverText = emoji[1])}
+						on:mouseleave={() => (hoverText = null)}
+					>
+						{emoji[0]}
+					</div>
 				{/each}
 			</div>
-			<input bind:value={search} class="item-search" type="text" placeholder="Search emojis" />
+			<input
+				bind:value={search}
+				class="item-search"
+				type="text"
+				placeholder={hoverText || 'Search emojis'}
+			/>
 		</div>
 
 		<div bind:this={items[1]} class="item shadow" style="display: none">
-			<div class="item-list">
-				{#each gifs.reverse() as gif}
+			<div class="item-list" on:scroll={() => loadOnScroll(items[1].children[0])}>
+				{#each gifs as gif}
 					<div class="image-cropper">
 						<img
-							src={gif.media[0].gif.url}
+							src={gif.media[0].gif.preview}
 							alt={gif.content_description}
 							class="hover"
 							draggable="false"
 							oncontextmenu="return false;"
-							on:click={() => dispatch("gif", gif.media[0].gif.url)}
+							on:click={(x) => dispatch('gif', x.target.src)}
+							on:mouseenter={(x) => {
+								x.target.src = gif.media[0].gif.url;
+								hoverText = gif.content_description.replace('GIF', '');
+							}}
+							on:mouseleave={(x) => {
+								x.target.src = gif.media[0].gif.preview;
+								hoverText = null;
+							}}
 						/>
 					</div>
 				{/each}
 			</div>
 			<input
 				bind:value={search}
-				on:input={searchGifs}
+				on:input={() => {
+					items[1].children[0].scrollTop = 0;
+					gifs = [];
+					next = '0';
+					searchGifs();
+				}}
 				class="item-search"
 				type="text"
-				placeholder="Search gifs"
+				placeholder={hoverText || 'Search gifs'}
 			/>
 		</div>
 
-		<div bind:this={items[2]} on:click={() => document.getElementById('file-to-upload').click()} class="item shadow" style="display: none">
+		<div
+			bind:this={items[2]}
+			on:click={() => document.getElementById('file-to-upload').click()}
+			class="item shadow"
+			style="display: none"
+		>
 			<input class="hidden" id="file-to-upload" type="file" accept=".png,.jpg,.gif" bind:files />
 			<img class="preview" src={tempPicture} alt="Preview" />
 		</div>
@@ -116,7 +171,6 @@
 {/if}
 
 <style>
-
 	.preview {
 		width: 100%;
 	}
@@ -177,6 +231,7 @@
 		width: 245px;
 		margin-top: 9px;
 		height: 30px;
+		padding-left: 15px;
 	}
 
 	.item {
@@ -220,6 +275,11 @@
 		color: white;
 		border-radius: 10px;
 		padding-top: 4px;
+	}
+
+	.emoji:hover {
+		cursor: pointer;
+		background: rgba(0, 0, 0, 0.1);
 	}
 
 	.shadow {

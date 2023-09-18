@@ -26,7 +26,22 @@
 		if (files[0].size >= 1024 * 1024) {
 			alert('File is too large');
 		} else {
-			FR.addEventListener('load', (evt) => (tempPicture = evt.target.result));
+			FR.addEventListener('load', (evt) => {
+				const img = new Image();
+				img.src = evt.target.result;
+				img.onload = () => {
+					const canvas = document.createElement('canvas');
+					const size = 200;
+					canvas.width = size;
+					canvas.height = size;
+					const ctx = canvas.getContext('2d');
+					const height = size / img.width * img.height;
+
+					ctx.drawImage(img, 0, (size - height) / 2, size, height);
+
+					tempPicture = canvas.toDataURL();
+				}
+			});
 			FR.readAsDataURL(files[0]);
 		}
 	}
@@ -64,8 +79,6 @@
 			}
 		}
 	}
-
-	$: console.log(tempName);
 </script>
 
 <Popup on:close>
@@ -128,9 +141,10 @@
 					<textarea
 						class="bio {edit ? 'edit editbio' : ''}"
 						spellcheck="false"
-						contenteditable="false"
+						readonly={!edit}
 						maxlength="255"
-						bind:innerText={tempBio}
+						rows="4"
+						bind:value={tempBio}
 					/>
 				</td>
 			</tr>

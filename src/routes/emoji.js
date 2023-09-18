@@ -692,14 +692,6 @@ export const emojis = [
 		"brain"
 	],
 	[
-		"🫀",
-		"anatomical heart"
-	],
-	[
-		"🫁",
-		"lungs"
-	],
-	[
 		"🦷",
 		"tooth"
 	],
@@ -1808,10 +1800,6 @@ export const emojis = [
 		"dodo"
 	],
 	[
-		"🪶",
-		"feather"
-	],
-	[
 		"🦩",
 		"flamingo"
 	],
@@ -1936,10 +1924,6 @@ export const emojis = [
 		"honeybee"
 	],
 	[
-		"🪲",
-		"beetle"
-	],
-	[
 		"🐞",
 		"lady beetle"
 	],
@@ -1948,24 +1932,12 @@ export const emojis = [
 		"cricket"
 	],
 	[
-		"🪳",
-		"cockroach"
-	],
-	[
 		"🦂",
 		"scorpion"
 	],
 	[
 		"🦟",
 		"mosquito"
-	],
-	[
-		"🪰",
-		"fly"
-	],
-	[
-		"🪱",
-		"worm"
 	],
 	[
 		"🦠",
@@ -2018,10 +1990,6 @@ export const emojis = [
 	[
 		"🌱",
 		"seedling"
-	],
-	[
-		"🪴",
-		"potted plant"
 	],
 	[
 		"🌲",
@@ -2128,20 +2096,12 @@ export const emojis = [
 		"strawberry"
 	],
 	[
-		"🫐",
-		"blueberries"
-	],
-	[
 		"🥝",
 		"kiwi fruit"
 	],
 	[
 		"🍅",
 		"tomato"
-	],
-	[
-		"🫒",
-		"olive"
 	],
 	[
 		"🥥",
@@ -2166,10 +2126,6 @@ export const emojis = [
 	[
 		"🌽",
 		"ear of corn"
-	],
-	[
-		"🫑",
-		"bell pepper"
 	],
 	[
 		"🥒",
@@ -2226,10 +2182,6 @@ export const emojis = [
 	[
 		"🥖",
 		"baguette bread"
-	],
-	[
-		"🫓",
-		"flatbread"
 	],
 	[
 		"🥨",
@@ -2296,10 +2248,6 @@ export const emojis = [
 		"burrito"
 	],
 	[
-		"🫔",
-		"tamale"
-	],
-	[
 		"🥙",
 		"stuffed flatbread"
 	],
@@ -2322,10 +2270,6 @@ export const emojis = [
 	[
 		"🍲",
 		"pot of food"
-	],
-	[
-		"🫕",
-		"fondue"
 	],
 	[
 		"🥣",
@@ -2506,10 +2450,6 @@ export const emojis = [
 	[
 		"☕",
 		"hot beverage"
-	],
-	[
-		"🫖",
-		"teapot"
 	],
 	[
 		"🍵",
@@ -2896,24 +2836,12 @@ export const emojis = [
 		"bullseye"
 	],
 	[
-		"🪀",
-		"yo yo"
-	],
-	[
-		"🪁",
-		"kite"
-	],
-	[
 		"🎱",
 		"pool 8 ball"
 	],
 	[
 		"🔮",
 		"crystal ball"
-	],
-	[
-		"🪄",
-		"magic wand"
 	],
 	[
 		"🧿",
@@ -2944,16 +2872,8 @@ export const emojis = [
 		"teddy bear"
 	],
 	[
-		"🪅",
-		"pi�ata"
-	],
-	[
 		"🪩",
 		"mirror ball"
-	],
-	[
-		"🪆",
-		"nesting dolls"
 	],
 	[
 		"🃏",
@@ -2978,10 +2898,6 @@ export const emojis = [
 	[
 		"🧵",
 		"thread"
-	],
-	[
-		"🪡",
-		"sewing needle"
 	],
 	[
 		"🧶",
@@ -3014,10 +2930,6 @@ export const emojis = [
 	[
 		"🗻",
 		"mount fuji"
-	],
-	[
-		"🛖",
-		"hut"
 	],
 	[
 		"🏠",
@@ -3098,10 +3010,6 @@ export const emojis = [
 	[
 		"🕌",
 		"mosque"
-	],
-	[
-		"🛕",
-		"hindu temple"
 	],
 	[
 		"🕍",
@@ -3272,10 +3180,6 @@ export const emojis = [
 		"sport utility vehicle"
 	],
 	[
-		"🛻",
-		"pickup truck"
-	],
-	[
 		"🚚",
 		"delivery truck"
 	],
@@ -3292,10 +3196,6 @@ export const emojis = [
 		"motor scooter"
 	],
 	[
-		"🛺",
-		"auto rickshaw"
-	],
-	[
 		"🚲",
 		"bicycle"
 	],
@@ -3306,10 +3206,6 @@ export const emojis = [
 	[
 		"🛹",
 		"skateboard"
-	],
-	[
-		"🛼",
-		"roller skate"
 	],
 	[
 		"🚏",
@@ -3432,18 +3328,6 @@ export const emojis = [
 		"sari"
 	],
 	[
-		"🩱",
-		"one piece swimsuit"
-	],
-	[
-		"🩲",
-		"briefs"
-	],
-	[
-		"🩳",
-		"shorts"
-	],
-	[
 		"👙",
 		"bikini"
 	],
@@ -3472,10 +3356,6 @@ export const emojis = [
 		"backpack"
 	],
 	[
-		"🩴",
-		"thong sandal"
-	],
-	[
 		"👞",
 		"man�s shoe"
 	],
@@ -3498,10 +3378,6 @@ export const emojis = [
 	[
 		"👡",
 		"woman�s sandal"
-	],
-	[
-		"🩰",
-		"ballet shoes"
 	],
 	[
 		"👢",
@@ -3530,10 +3406,6 @@ export const emojis = [
 	[
 		"🧢",
 		"billed cap"
-	],
-	[
-		"🪖",
-		"military helmet"
 	],
 	[
 		"📿",
@@ -3616,10 +3488,6 @@ export const emojis = [
 		"saxophone"
 	],
 	[
-		"🪗",
-		"accordion"
-	],
-	[
 		"🎸",
 		"guitar"
 	],
@@ -3636,16 +3504,8 @@ export const emojis = [
 		"violin"
 	],
 	[
-		"🪕",
-		"banjo"
-	],
-	[
 		"🥁",
 		"drum"
-	],
-	[
-		"🪘",
-		"long drum"
 	],
 	[
 		"🪇",
@@ -3760,10 +3620,6 @@ export const emojis = [
 		"red paper lantern"
 	],
 	[
-		"🪔",
-		"diya lamp"
-	],
-	[
 		"📔",
 		"notebook with decorative cover"
 	],
@@ -3826,10 +3682,6 @@ export const emojis = [
 	[
 		"💰",
 		"money bag"
-	],
-	[
-		"🪙",
-		"coin"
 	],
 	[
 		"💴",
@@ -3996,32 +3848,16 @@ export const emojis = [
 		"hammer"
 	],
 	[
-		"🪓",
-		"axe"
-	],
-	[
 		"🔫",
 		"water pistol"
-	],
-	[
-		"🪃",
-		"boomerang"
 	],
 	[
 		"🏹",
 		"bow and arrow"
 	],
 	[
-		"🪚",
-		"carpentry saw"
-	],
-	[
 		"🔧",
 		"wrench"
-	],
-	[
-		"🪛",
-		"screwdriver"
 	],
 	[
 		"🔩",
@@ -4036,20 +3872,12 @@ export const emojis = [
 		"link"
 	],
 	[
-		"🪝",
-		"hook"
-	],
-	[
 		"🧰",
 		"toolbox"
 	],
 	[
 		"🧲",
 		"magnet"
-	],
-	[
-		"🪜",
-		"ladder"
 	],
 	[
 		"🧪",
@@ -4080,24 +3908,12 @@ export const emojis = [
 		"syringe"
 	],
 	[
-		"🩸",
-		"drop of blood"
-	],
-	[
 		"💊",
 		"pill"
 	],
 	[
-		"🩹",
-		"adhesive bandage"
-	],
-	[
 		"🩼",
 		"crutch"
-	],
-	[
-		"🩺",
-		"stethoscope"
 	],
 	[
 		"🩻",
@@ -4108,28 +3924,8 @@ export const emojis = [
 		"door"
 	],
 	[
-		"🛗",
-		"elevator"
-	],
-	[
-		"🪞",
-		"mirror"
-	],
-	[
-		"🪟",
-		"window"
-	],
-	[
-		"🪑",
-		"chair"
-	],
-	[
 		"🚽",
 		"toilet"
-	],
-	[
-		"🪠",
-		"plunger"
 	],
 	[
 		"🚿",
@@ -4138,14 +3934,6 @@ export const emojis = [
 	[
 		"🛁",
 		"bathtub"
-	],
-	[
-		"🪤",
-		"mouse trap"
-	],
-	[
-		"🪒",
-		"razor"
 	],
 	[
 		"🧴",
@@ -4168,20 +3956,12 @@ export const emojis = [
 		"roll of paper"
 	],
 	[
-		"🪣",
-		"bucket"
-	],
-	[
 		"🧼",
 		"soap"
 	],
 	[
 		"🫧",
 		"bubbles"
-	],
-	[
-		"🪥",
-		"toothbrush"
 	],
 	[
 		"🧽",
@@ -4198,10 +3978,6 @@ export const emojis = [
 	[
 		"🚬",
 		"cigarette"
-	],
-	[
-		"🪦",
-		"headstone"
 	],
 	[
 		"🗿",
@@ -4432,10 +4208,6 @@ export const emojis = [
 		"sun with face"
 	],
 	[
-		"🪐",
-		"ringed planet"
-	],
-	[
 		"⭐",
 		"star"
 	],
@@ -4586,10 +4358,6 @@ export const emojis = [
 	[
 		"🥉",
 		"3rd place medal"
-	],
-	[
-		"🪧",
-		"placard"
 	],
 	[
 		"🪪",
@@ -5048,28 +4816,8 @@ export const emojis = [
 		"red circle"
 	],
 	[
-		"🟠",
-		"orange circle"
-	],
-	[
-		"🟡",
-		"yellow circle"
-	],
-	[
-		"🟢",
-		"green circle"
-	],
-	[
 		"🔵",
 		"blue circle"
-	],
-	[
-		"🟣",
-		"purple circle"
-	],
-	[
-		"🟤",
-		"brown circle"
 	],
 	[
 		"⚫",
@@ -5078,34 +4826,6 @@ export const emojis = [
 	[
 		"⚪",
 		"white circle"
-	],
-	[
-		"🟥",
-		"red square"
-	],
-	[
-		"🟧",
-		"orange square"
-	],
-	[
-		"🟨",
-		"yellow square"
-	],
-	[
-		"🟩",
-		"green square"
-	],
-	[
-		"🟦",
-		"blue square"
-	],
-	[
-		"🟪",
-		"purple square"
-	],
-	[
-		"🟫",
-		"brown square"
 	],
 	[
 		"⬛",
