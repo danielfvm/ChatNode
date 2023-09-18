@@ -6,7 +6,7 @@
 	export let editable;
 
 	// widget bindings
-	let nodeName, nodePronouns, nodeBio, nodeEditButton;
+	let nodeEditButton;
 	let files;
 
 	// temporary profile edits
@@ -31,20 +31,6 @@
 		}
 	}
 
-	function formatText(text, e, maxLines) {
-		const lineCount = (text.match('\n') || []).length + 1;
-
-		if (e.key == 'ArrowLeft' || e.key == 'ArrowRight' || e.key == 'ArrowUp' || e.key == 'ArrowDown')
-			return;
-
-		if (maxLines == 1 && text.length >= 15 && e.key != 'Backspace' && e.key != 'Delete')
-			e.preventDefault();
-
-		if (e.key == 'Enter' && lineCount >= maxLines) e.preventDefault();
-
-		if (e.key == 'Tab') e.preventDefault();
-	}
-
 	function didUpdateProfile() {
 		return (
 			tempName != profile.name ||
@@ -55,9 +41,9 @@
 	}
 
 	function updateProfile() {
-		profile.name = tempName;
-		profile.pronouns = tempPronouns;
-		profile.bio = tempBio;
+		profile.name = tempName.substring(0, 20);
+		profile.pronouns = tempPronouns.substring(0, 20);
+		profile.bio = tempBio.substring(0, 256);
 		profile.picture = tempPicture;
 		localStorage.setItem('profile', JSON.stringify(profile));
 		dispatch('updateProfile', profile);
@@ -65,10 +51,6 @@
 
 	function clickedEdit() {
 		edit = !edit;
-
-		nodeName.contentEditable = edit;
-		nodePronouns.contentEditable = edit;
-		nodeBio.contentEditable = edit;
 
 		if (nodeEditButton && edit) {
 			nodeEditButton.classList.remove('bi-pencil-fill');
@@ -82,6 +64,8 @@
 			}
 		}
 	}
+
+	$: console.log(tempName);
 </script>
 
 <Popup on:close>
@@ -117,34 +101,36 @@
 				</td>
 
 				<td class="text">
-					<div
+					<input
+						type="text"
 						class="name {edit ? 'edit' : ''}"
 						spellcheck="false"
-						contenteditable="false"
-						bind:this={nodeName}
-						bind:innerText={tempName}
-						on:keydown={(e) => formatText(profile.name, e, 1)}
+						readonly={!edit}
+						maxlength="20"
+						bind:value={tempName}
 					/>
 
 					{#if editable}
-						<i bind:this={nodeEditButton} class="editbutton bi bi-pencil-fill" on:click={clickedEdit} />
+						<i
+							bind:this={nodeEditButton}
+							class="editbutton bi bi-pencil-fill"
+							on:click={clickedEdit}
+						/>
 					{/if}
 
-					<div
+					<input
 						class="pronouns {edit ? 'edit' : ''}"
 						spellcheck="false"
-						contenteditable="false"
-						bind:this={nodePronouns}
-						bind:innerText={tempPronouns}
-						on:keydown={(e) => formatText(profile.pronouns, e, 1)}
+						readonly={!edit}
+						maxlength="20"
+						bind:value={tempPronouns}
 					/>
-					<div
+					<textarea
 						class="bio {edit ? 'edit editbio' : ''}"
 						spellcheck="false"
 						contenteditable="false"
-						bind:this={nodeBio}
+						maxlength="255"
 						bind:innerText={tempBio}
-						on:keydown={(e) => formatText(profile.bio, e, 3)}
 					/>
 				</td>
 			</tr>
@@ -153,6 +139,13 @@
 </Popup>
 
 <style>
+	input {
+		background: none;
+		outline: none;
+		border: none;
+		color: white;
+	}
+
 	.popup {
 		width: 900px;
 		height: 250px;
@@ -191,12 +184,14 @@
 		background: rgba(255, 255, 255, 0.1);
 		border-radius: 10px;
 		padding: 20px;
-		margin-top: 20px;
 		height: 120px;
 		width: 560px;
 		overflow: hidden;
 		transition: background 0.1s;
 		outline: none;
+		color: white;
+		font-size: 18px;
+		border: none;
 	}
 
 	.pronouns {
@@ -245,7 +240,7 @@
 		top: 0;
 		border-radius: 10px;
 		background: transparent;
-		margin-top: -7px;
+		margin-top: -4px;
 		display: flex;
 		align-items: center;
 		justify-content: center;

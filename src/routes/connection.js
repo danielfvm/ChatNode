@@ -1,6 +1,8 @@
 // update profile
 // have multiple peers in url
 
+import defaultProfilePicture from '$lib/images/profile.png';
+
 export function tryParse(data) {
     try {
         return JSON.parse(data);
@@ -17,7 +19,12 @@ export function stripHtml(html) {
 
 export class User {
     constructor(chat, conn, onOpen = () => {}) {
-        this.profile = null;
+        this.profile = {
+            picture: defaultProfilePicture,
+            name: 'None',
+            pronouns: 'they/them',
+            bio: 'No bio yet'
+        };
         this.chat = chat;
         this.conn = conn;
 
@@ -26,7 +33,7 @@ export class User {
             if (!this.isConnected()) {
                 this.chat.removeUser(this);
             }
-        }, 1000);
+        }, 10000);
 
         this.conn.on('open', () => {
             console.log('Now open!');
@@ -58,6 +65,8 @@ export class User {
                     this.chat.removeUser(this);
                 } else if (this.profile != message.profile) {
                     this.profile = message.profile;
+
+
                     this.chat.onUserJoined(this);
                 }
                 break;
