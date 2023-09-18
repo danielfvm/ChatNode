@@ -27,7 +27,7 @@
 		document.addEventListener('keydown', (ev) => {
 			if (ev.key == 'Escape') close();			
 		});
-	})
+	});
 </script>
 
 {#if visible}
@@ -47,7 +47,7 @@
 		height: 100%;
 		background: rgba(0, 0, 0, 0.7);
 		backdrop-filter: blur(3px);
-		z-index: 2;
+		z-index: 3;
 	}
 
 	.box {

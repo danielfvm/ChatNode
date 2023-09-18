@@ -250,8 +250,8 @@
 	}
 
 	.fade-top {
-		mask-image: linear-gradient(to top, black calc(100% - 200px), transparent 100%);
-		-webkit-mask-image: linear-gradient(to top, black calc(100% - 200px), transparent 100%);
+		mask-image: linear-gradient(to top, black calc(100% - 100px), transparent 100%);
+		-webkit-mask-image: linear-gradient(to top, black calc(100% - 100px), transparent 100%);
 
 		position: absolute;
 		width: 100%;

@@ -8,7 +8,7 @@
 
 	const dispatch = createEventDispatcher();
 
-	let search;
+	let search = '';
 	let entries = [null, null, null, null];
 	let items = [null, null, null, null];
 	let background;
@@ -76,6 +76,8 @@
 	function close(e) {
 		if (e.target != background)
 			return;
+
+		search = '';
 		dispatch("close");
 	}
 
