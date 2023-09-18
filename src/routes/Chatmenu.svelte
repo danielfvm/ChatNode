@@ -1,6 +1,6 @@
 <script>
 	import { emojis } from './emoji';
-	import { fly } from 'svelte/transition';
+	import { fly, fade } from 'svelte/transition';
 	import { createEventDispatcher } from 'svelte';
 
 	export let visible;
@@ -11,6 +11,7 @@
 	let search;
 	let entries = [null, null, null, null];
 	let items = [null, null, null, null];
+	let background;
 
 	let files;
 	let gifs = [];
@@ -72,6 +73,12 @@
 		scrolled = scroll;
 	}
 
+	function close(e) {
+		if (e.target != background)
+			return;
+		dispatch("close");
+	}
+
 	$: if (files && files.length > 0) {
 		const FR = new FileReader();
 
@@ -86,7 +93,7 @@
 </script>
 
 {#if visible}
-	<div transition:fly={{ y: -20 }} bind:this={menubox}>
+	<div class="menuwindow" transition:fly={{ y: 20 }} bind:this={menubox}>
 		<div class="menu shadow">
 			<i
 				bind:this={entries[0]}
@@ -168,9 +175,28 @@
 
 		<div bind:this={items[3]} class="item shadow" style="display: none" />
 	</div>
+	<div class="background" bind:this={background} transition:fade={{ duration: 200 }} on:click={close}></div>
 {/if}
 
 <style>
+	.background {
+		position: fixed;
+		background: rgba(0, 0, 0, 0.5);
+		top: 0;
+		left: 0;
+		bottom: 0;
+		right: 0;
+		z-index: 0;
+	}
+
+	.menuwindow {
+		position: absolute;
+		margin-left: 10px;
+		transform: translateY(-100px);
+		bottom: 0;
+		z-index: 3;
+	}
+
 	.preview {
 		width: 100%;
 	}
@@ -228,7 +254,7 @@
 		background: #ebe1d8;
 		border-radius: 10px;
 		padding: 5px;
-		width: 245px;
+		width: 235px;
 		margin-top: 9px;
 		height: 30px;
 		padding-left: 15px;
@@ -300,5 +326,15 @@
 
 	.hover:hover {
 		cursor: pointer;
+	}
+
+	@media (max-width: 500px) {
+		.menu {
+			margin-left: 4px;
+		}
+
+		.item {
+			margin-left: 4px;
+		}
 	}
 </style>

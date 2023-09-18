@@ -68,7 +68,8 @@ export class User {
                     this.chat.removeUser(this);
                 } else if (this.profile != message.profile) {
                     this.profile.picture = message.profile.picture || defaultProfilePicture;
-                    this.profile.picture = this.profile.picture.length > 1024 * 128 ? defaultProfilePicture : this.profile.picture; // if image to large, fallback to default
+                    console.log(this.profile.picture.length);
+                    this.profile.picture = this.profile.picture.length > 1024 * 512 ? defaultProfilePicture : this.profile.picture; // if image to large, fallback to default
                     this.profile.name = (message.profile.name || this.profile.name).substring(0, 20);
                     this.profile.pronouns = (message.profile.pronouns || this.profile.pronouns).substring(0, 20);
                     this.profile.bio = (message.profile.bio || this.profile.bio).substring(0, 256);

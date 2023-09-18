@@ -109,6 +109,7 @@
 		height: 50px;
 		width: 100%;
 		padding: 4px;
+		z-index: 1;
 
 		/*background: #352f44;
 		box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.25);*/

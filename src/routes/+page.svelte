@@ -21,6 +21,7 @@
 
 	let chats = [];
 	let selectedChat;
+	let chatscroll;
 
 	let popupMessage = '';
 
@@ -91,14 +92,14 @@
 			if (chat != selectedChat) return;
 			selectedChat.messages = selectedChat.messages;
 
-			if (document.body.scrollHeight > document.documentElement.scrollTop + document.body.clientHeight / 2)
-			setTimeout(() => {
-				window.scrollBy({
-					left: 0,
-					top: document.body.scrollHeight,
-					behavior: 'smooth'
-				});
-			}, 30);
+			if (chatscroll && chatscroll.scrollHeight > chatscroll.scrollTop + chatscroll.clientHeight / 2)
+				setTimeout(() => {
+					chatscroll.scrollBy({
+						left: 0,
+						top: document.body.scrollHeight,
+						behavior: 'smooth'
+					});
+				}, 50);
 		};
 
 		chats = [...chats, chat];
@@ -152,13 +153,9 @@
 
 		localStorage.getItem('profile') && (profile = JSON.parse(localStorage.getItem('profile')));
 
-		// Hierachy:
-		// invite - oldchat - create new chat
 		const invite = getInvite();
 		loadOldChat();
 		if (invite) createChat(Chat.joinChat(profile, invite.chat, invite.peers));
-		//if (chats.length == 0)
-		//	createChat(Chat.createChat(profile)); // or do sth else like displaying a hello world screne
 
 		openChat(chats[chats.length - 1]);
 	});
@@ -197,34 +194,33 @@
 {/if}
 
 {#if selectedChat}
-	<div class="chat">
-		{#each selectedChat.messages as message}
-			<Message
-				{message}
-				showProfile={showProfilePic(message)}
-				owner={message.profile == profile}
-				on:profile={(e) => (openProfile = e.detail)}
-			/>
-		{/each}
-
-		<Chatbox
-			{profile}
-			editing={!openProfile}
-			on:message={(e) => sendMessage(e.detail.message)}
-			on:profile={(e) => (openProfile = e.detail)}
-		/>
+	<div class="fade-top">
+		<div class="chat fade-bottom" bind:this={chatscroll}>
+			<div style="height: 100px;" />
+			{#each selectedChat.messages as message}
+				<Message
+					{message}
+					showProfile={showProfilePic(message)}
+					owner={message.profile == profile}
+					on:profile={(e) => (openProfile = e.detail)}
+				/>
+			{/each}
+			<div style="height: 140px;" />
+		</div>
 	</div>
+
+	<Chatbox
+		{profile}
+		editing={!openProfile}
+		on:message={(e) => sendMessage(e.detail.message)}
+		on:profile={(e) => (openProfile = e.detail)}
+	/>
 {:else}
 	<h1>Welcome to Chat Node</h1>
 	<p>Click on the plus icon to create a new chat, share the link and start chatting!</p>
 {/if}
 
 <style>
-	.chat {
-		overflow-y: auto;
-		padding: 2em;
-	}
-
 	h1 {
 		color: white;
 		font: 50px Fira Mono, bolder;
@@ -234,5 +230,30 @@
 		color: white;
 		font: 20px Fira Mono, bolder;
 		text-align: center;
+	}
+
+	.chat {
+		position: absolute;
+		margin-top: 0px;
+		width: 100%;
+		height: 100%;
+		top: 0;
+
+		scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+		overflow: auto;
+		margin-bottom: 100px;
+	}
+
+	.fade-bottom {
+		mask-image: linear-gradient(to bottom, black calc(100% - 200px), transparent 100%);
+	}
+
+	.fade-top {
+		mask-image: linear-gradient(to top, black calc(100% - 200px), transparent 100%);
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		top: 0;
+		bottom: 0;
 	}
 </style>

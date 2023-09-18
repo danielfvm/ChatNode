@@ -31,7 +31,7 @@
 				img.src = evt.target.result;
 				img.onload = () => {
 					const canvas = document.createElement('canvas');
-					const size = 200;
+					const size = 300;
 					canvas.width = size;
 					canvas.height = size;
 					const ctx = canvas.getContext('2d');

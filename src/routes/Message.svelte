@@ -17,10 +17,13 @@
 		return hours + ':' + minutes;
 	}
 
+
+	// extract tenor urls
 	const urls = message.text.match(/(https?:\/\/media.tenor.com\/[^\s]+)/g) || [];
 	let data = message.text.replace(/(https?:\/\/media.tenor.com\/[^\s]+)/g, '');
 
-	data = data.split(/(https?:\/\/[^\s]+)/g); // TODO: LOOP
+	// create a list of text + urls
+	data = data.split(/(https?:\/\/[^\s]+)/g);
 	data = data.map((x) => {
 		if (x.match(/(https?:\/\/[^\s]+)/g))
 			return  { html: '<a href="' + x + '" target="_blank">' + x + '</a>', text: "" };
@@ -29,18 +32,14 @@
 </script>
 
 <div class="align" style="flex-direction: {owner ? 'row' : 'row-reverse'}">
-	{#if showProfile}
-		<div class="image-cropper hover" on:click={dispatch('profile', message.profile)}>
-			<img
-				draggable="false"
-				oncontextmenu="return false;"
-				src={message.profile.picture}
-				alt="Profile picture"
-			/>
-		</div>
-	{:else}
-		<div class="image-cropper" />
-	{/if}
+	<div class="profile-pic image-cropper hover" style="visibility: {showProfile ? 'visible' : 'hidden'}" on:click={dispatch('profile', message.profile)}>
+		<img
+			draggable="false"
+			oncontextmenu="return false;"
+			src={message.profile.picture}
+			alt="Profile picture"
+		/>
+	</div>
 	<div class="chat shadow">
 		{#if showProfile}
 			<div class="name hover" on:click={dispatch('profile', message.profile)}>
@@ -79,6 +78,10 @@
 		max-width: 60%;
 		min-width: 220px;
 		border-radius: 10px;
+
+		overflow: hidden;
+		word-break: break-all;
+		overflow-wrap: break-word;
 
 		background: #faf0e6;
 		color: gray;
@@ -129,5 +132,17 @@
 	p {
 		color: white;
 		font-weight: bolder;
+	}
+
+
+	.profile-pic {
+		margin-left: 10px;
+	}
+
+
+	@media (max-width: 500px) {
+		.profile-pic {
+			display: none;
+		}
 	}
 </style>
