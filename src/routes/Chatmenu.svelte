@@ -74,24 +74,46 @@
 	}
 
 	function close(e) {
-		if (e.target != background)
-			return;
+		if (e.target != background) return;
 
 		search = '';
-		dispatch("close");
+		dispatch('close');
 	}
 
 	$: if (files && files.length > 0) {
 		const FR = new FileReader();
 
-		if (files[0].size >= 1024 * 1024) {
-			alert('File is too large');
-		} else {
-			FR.addEventListener('load', (evt) => (tempPicture = evt.target.result));
-			FR.readAsDataURL(files[0]);
-		}
+		FR.addEventListener('load', (evt) => {
+			const img = new Image();
+			img.src = evt.target.result;
+			img.onload = () => {
+				const canvas = document.createElement('canvas');
+				const max = Math.max(img.width, img.height);
+				const size = 500;
+
+				if (max > size) {
+					if (img.width > img.height) {
+						img.height = (size / img.width) * img.height;
+						img.width = size;
+					} else {
+						img.width = (size / img.height) * img.width;
+						img.height = size;
+					}
+				}
+
+				canvas.width = img.width;
+				canvas.height = img.height;
+
+				const ctx = canvas.getContext('2d');
+				ctx.drawImage(img, 0, 0, img.width, img.height);
+
+				tempPicture = canvas.toDataURL();
+				dispatch('gif', tempPicture);
+			};
+		});
+		FR.readAsDataURL(files[0]);
+		files = [];
 	}
-	
 </script>
 
 {#if visible}
@@ -177,7 +199,12 @@
 
 		<div bind:this={items[3]} class="item shadow" style="display: none" />
 	</div>
-	<div class="background" bind:this={background} transition:fade={{ duration: 200 }} on:click={close}></div>
+	<div
+		class="background"
+		bind:this={background}
+		transition:fade={{ duration: 200 }}
+		on:click={close}
+	/>
 {/if}
 
 <style>

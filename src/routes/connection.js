@@ -107,7 +107,7 @@ export class User {
 export class MessageData {
     constructor(text, user) {
         this.time = new Date();
-        this.text = text.trim().substring(0, 1024 * 4);
+        this.text = text.trim().substring(0, 1024 * 1024);
         this.user = user;
     }
 

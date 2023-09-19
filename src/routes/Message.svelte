@@ -19,8 +19,11 @@
 
 
 	// extract tenor urls
-	const urls = message.text.match(/(https?:\/\/media.tenor.com\/[^\s]+)/g) || [];
+	const gifs = message.text.match(/(https?:\/\/media.tenor.com\/[^\s]+)/g) || [];
 	let data = message.text.replace(/(https?:\/\/media.tenor.com\/[^\s]+)/g, '');
+
+	const pngs = message.text.match(/(data:image\/png;base64,[^\s]+)/g) || [];
+	data = data.replace(/(data:image\/png;base64,[^\s]+)/g, '');
 
 	// create a list of text + urls
 	data = data.split(/(https?:\/\/[^\s]+)/g);
@@ -54,8 +57,11 @@
 				{@html html}
 			{/each}
 		</div>
-		{#each urls as url}
-			<img class="gif" src={url} />
+		{#each gifs as gif}
+			<img class="gif" src={gif} />
+		{/each}
+		{#each pngs as png}
+			<img class="gif" src={png} />
 		{/each}
 	</div>
 </div>
