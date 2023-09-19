@@ -49,7 +49,7 @@ export class User {
         });
 
         this.conn.on('close', () => console.log("!close") || this.chat.removeUser(this));
-        this.conn.on('error', (_) => console.log("!error") || this.chat.removeUser(this));
+        this.conn.on('error', (e) => console.log("!error") || this.chat.removeUser(this));
     }
 
     sendData(data) {
