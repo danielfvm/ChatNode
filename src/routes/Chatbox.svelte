@@ -187,6 +187,7 @@
 		margin-bottom: 10px;
 
 		z-index: 2;
+		max-height: 50%;
 	}
 
 	.chat {
@@ -201,6 +202,7 @@
 		border-radius: 10px;
 
 		white-space: pre-line;
+		overflow-y: auto;
 	}
 
 	.name {

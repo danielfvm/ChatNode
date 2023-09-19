@@ -2,6 +2,7 @@
 	import { emojis } from './emoji';
 	import { fly, fade } from 'svelte/transition';
 	import { createEventDispatcher } from 'svelte';
+	import { onMount } from 'svelte';
 
 	export let visible;
 	export let menubox;
@@ -12,6 +13,7 @@
 	let entries = [null, null, null, null];
 	let items = [null, null, null, null];
 	let background;
+	let code;
 
 	let files;
 	let gifs = [];
@@ -114,6 +116,20 @@
 		FR.readAsDataURL(files[0]);
 		files = [];
 	}
+
+	var editor;
+	$: if (!editor && code) {
+		console.log(code);
+		editor = CodeMirror.fromTextArea(code, {
+			styleActiveLine: true,
+			lineNumbers: true,
+			matchBrackets: true,
+			autoCloseBrackets: true,
+			autoCloseTags: true,
+			mode: "javascript",
+		});
+		console.log(editor);
+	}
 </script>
 
 {#if visible}
@@ -197,7 +213,9 @@
 			<img class="preview" src={tempPicture} alt="Preview" />
 		</div>
 
-		<div bind:this={items[3]} class="item shadow" style="display: none" />
+		<div bind:this={items[3]} class="item shadow" style="display: none" >
+			<textarea bind:this={code} class="code" />
+		</div>
 	</div>
 	<div
 		class="background"
@@ -208,6 +226,9 @@
 {/if}
 
 <style>
+	.copy {
+	}
+
 	.background {
 		position: fixed;
 		background: rgba(0, 0, 0, 0.5);

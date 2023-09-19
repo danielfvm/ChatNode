@@ -56,7 +56,9 @@
 	}
 
 	function updateProfile() {
-		profile.name = tempName.substring(0, 20);
+		profile.name = tempName.length > 0 ? tempName.substring(0, 20) : profile.name;
+		tempName = profile.name;
+
 		profile.pronouns = tempPronouns.substring(0, 20);
 		profile.bio = tempBio.substring(0, 256);
 		profile.picture = tempPicture;
@@ -206,6 +208,7 @@
 		color: white;
 		font-size: 18px;
 		border: none;
+		resize: none;
 	}
 
 	.pronouns {
