@@ -2,7 +2,6 @@
 	import { emojis } from './emoji';
 	import { fly, fade } from 'svelte/transition';
 	import { createEventDispatcher } from 'svelte';
-	import { onMount } from 'svelte';
 
 	export let visible;
 	export let menubox;
@@ -22,6 +21,24 @@
 	let next = '0';
 	let scrolled = false;
 	let hoverText = null;
+
+	let previewCode = `
+let ctx;
+
+function oninit(canvas) {
+	// called on start
+	ctx = canvas.getContext('2d');
+}
+
+function onupdate() {
+	// called 60 times per second
+	// draw a red rect on screen with 'ctx'
+	ctx.clearRect(0, 0, 400, 400);
+	ctx.fillStyle = 'red';
+	ctx.fillRect(100, 100, 200, 200);
+}`;
+
+
 
 	fetch('https://g.tenor.com/v1/trending?key=LIVDSRZULELA&limit=8')
 		.then((res) => res.json())
@@ -45,6 +62,24 @@
 
 		if (index == 2) {
 			document.getElementById('file-to-upload').click();
+		}
+
+		if (index == 3) {
+			let editor = CodeMirror.fromTextArea(code, {
+				lineNumbers: true,
+				mode: {
+					name: 'javascript',
+					globalVars: true
+				},
+				extraKeys: {"Ctrl-Space": "autocomplete"},
+				autoCloseBrackets: true,
+				autoCloseTags: true,
+				matchBrackets: true,
+			});
+
+			editor.display.input.textarea.onkeyup = editor.display.input.textarea.onchange = () => {
+				previewCode = editor.doc.children[0].lines.map(x => x.text).join('\n');
+			}
 		}
 	}
 
@@ -77,7 +112,6 @@
 
 	function close(e) {
 		if (e.target != background) return;
-
 		search = '';
 		dispatch('close');
 	}
@@ -117,19 +151,6 @@
 		files = [];
 	}
 
-	var editor;
-	$: if (!editor && code) {
-		console.log(code);
-		editor = CodeMirror.fromTextArea(code, {
-			styleActiveLine: true,
-			lineNumbers: true,
-			matchBrackets: true,
-			autoCloseBrackets: true,
-			autoCloseTags: true,
-			mode: "javascript",
-		});
-		console.log(editor);
-	}
 </script>
 
 {#if visible}
@@ -213,8 +234,8 @@
 			<img class="preview" src={tempPicture} alt="Preview" />
 		</div>
 
-		<div bind:this={items[3]} class="item shadow" style="display: none" >
-			<textarea bind:this={code} class="code" />
+		<div bind:this={items[3]} class="item code shadow" style="display: none">
+			<textarea bind:this={code} value={previewCode} />
 		</div>
 	</div>
 	<div
@@ -226,8 +247,7 @@
 {/if}
 
 <style>
-	.copy {
-	}
+
 
 	.background {
 		position: fixed;
@@ -240,6 +260,7 @@
 	}
 
 	.menuwindow {
+		width: 100%;
 		position: absolute;
 		margin-left: 10px;
 		transform: translateY(-100px);
@@ -320,6 +341,9 @@
 		padding: 5px;
 		position: relative;
 	}
+	.code {
+		width: calc(100% - 150px) !important;
+	}
 
 	.item-list {
 		scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
@@ -380,11 +404,15 @@
 
 	@media (max-width: 500px) {
 		.menu {
-			margin-left: 4px;
+			margin-left: 0px;
 		}
 
 		.item {
-			margin-left: 4px;
+			margin-left: 0px;
+		}
+
+		.code {
+			width: calc(100% - 24px) !important;
 		}
 	}
 </style>

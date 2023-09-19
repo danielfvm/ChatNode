@@ -133,7 +133,7 @@
 
 	// add embedded code
 	codes.forEach((code) => {
-		data.push({ text: '', html: '', code: createWorker(code.substring(3, code.length - 4)) });
+		data.push({ text: '', html: '', code: createWorker(code.substring(3, code.length - 3)) });
 	});
 </script>
 

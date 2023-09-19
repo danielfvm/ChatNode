@@ -89,7 +89,9 @@
 		};
 
 		chat.onMessage = (_message) => {
-			if (chat != selectedChat) return;
+			if (chat != selectedChat) 
+				return;
+
 			selectedChat.messages = selectedChat.messages;
 
 			if (chatscroll && chatscroll.scrollHeight > chatscroll.scrollTop + chatscroll.clientHeight / 2)
@@ -125,6 +127,7 @@
 			if (c == chat) chat.close();
 			return c != chat;
 		});
+			console.log("CLOSE", chats);
 
 		// update local storage for future reloading
 		localStorage.setItem('chats', JSON.stringify(chats.map((x) => x.getLink())));
@@ -135,6 +138,7 @@
 			selectedChat.refreshTitle();
 		} else {
 			selectedChat = null;
+			window.history.replaceState(null, 'Title', '?');
 		}
 	}
 

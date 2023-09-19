@@ -199,7 +199,7 @@ export class Chat {
     }
 
     refreshTitle() {
-        window.history.pushState(null, 'Title', '?chat=' + this.getLink());
+        window.history.replaceState(null, 'Title', '?chat=' + this.getLink());
     }
 
     // Creates a new chat with a random name
