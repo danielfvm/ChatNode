@@ -18,56 +18,32 @@
 	}
 
 	function createWorker(code) {
-		// URL.createObjectURL
-		window.URL = window.URL || window.webkitURL;
+		return (self) => {
+			console.log(self.target)
+			const canvas = self.target.parentNode.parentNode.children[0];
+			const text = self.target.parentNode.parentNode.children[1];
+			
+			text.style.display = 'none';
+			canvas.style.display = 'block';
 
-		console.log(code);
+			const response = `
+				const exit = (msg) => postMessage({ type: 'exit', msg: msg });
 
-		let id = Math.random().toString(36).substring(7);
+				self.onmessage=function(e){
+					if (self[e.data.type]) {
+						self[e.data.type](e.data.data);
+					}
+				};
 
-		// "Server response", used in all examples
-		var response = `
-			const exit = (msg) => postMessage({ type: 'exit', msg: msg });
+				${code}
+			`;
 
-			self.onmessage=function(e){
-				if (e.data.rAF && typeof update !== 'undefined') {
-					update(e.data.rAF);
-				} else if (e.data.canvas && typeof init !== 'undefined') {
-					init(e.data.canvas);
-				} else if (e.data.type == 'move' && typeof mouseMove !== 'undefined') {
-					mouseMove(e.data.x, e.data.y);
-				} else if (e.data.type == 'down' && typeof mouseDown !== 'undefined') {
-					mouseDown(e.data.x, e.data.y, e.data.button);
-				} else if (e.data.type == 'up' && typeof mouseUp !== 'undefined') {
-					mouseUp(e.data.x, e.data.y, e.data.button);
-				}
-			}
-		`.replace('\n', '') + code;
-
-		// create worker from code
-		var blob;
-		try {
-			blob = new Blob([response], { type: 'application/javascript' });
-		} catch (e) {
-			// Backwards-compatibility
-			window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
-			blob = new BlobBuilder();
-			blob.append(response);
-			blob = blob.getBlob();
-		}
-
-		// wait for canvas to be created
-		setTimeout(() => {
-			var worker = new Worker(URL.createObjectURL(blob));
-
-			// send canvas to worker
-			var canvas = document.getElementById('canvas' + id);
-			var offscreen = canvas.transferControlToOffscreen();
-			worker.postMessage({ canvas: offscreen }, [offscreen]);
+			// create worker from code
+			const blob = new Blob([response], { type: 'application/javascript' });
+			const worker = new Worker((window.URL || window.webkitURL).createObjectURL(blob));
 
 			// Test, used in all examples:
 			worker.onmessage = function (e) {
-				console.log(e);
 				if (e.data.type == 'exit') {
 					console.log('Worker exits ' + (e.data.msg || ''));
 					worker.terminate();
@@ -75,45 +51,37 @@
 			};
 
 			worker.onerror = function (e) {
-				const errorNode = document.getElementById('error' + id);
-				errorNode.innerText = e.message;
-				errorNode.style.display = 'block';
+				// set error msg
+				text.innerText = e.message;
+				text.style.display = 'block';
 
-				const messageNode = document.getElementById('canvas' + id);
-				messageNode.style.display = 'none';
+				// hide canvas
+				canvas.style.display = 'none';
 
 				worker.terminate();
 			};
 
-			canvas.onmousemove = function (e) {
-				var rect = canvas.getBoundingClientRect();
-				var x = e.clientX - rect.left;
-				var y = e.clientY - rect.top;
-				worker.postMessage({ type: 'move', x: x, y: y });
-			};
+			// send canvas to worker
+			const offscreen = canvas.transferControlToOffscreen();
+			worker.postMessage({ type: 'init', data: offscreen }, [offscreen]);
 
-			canvas.onmousedown = function (e) {
-				var rect = canvas.getBoundingClientRect();
-				var x = e.clientX - rect.left;
-				var y = e.clientY - rect.top;
-				worker.postMessage({ type: 'down', x: x, y: y, button: e.button });
-			};
-
-			canvas.onmouseup = function (e) {
-				var rect = canvas.getBoundingClientRect();
-				var x = e.clientX - rect.left;
-				var y = e.clientY - rect.top;
-				worker.postMessage({ type: 'up', x: x, y: y, button: e.button });
-			};
+			// mouse events
+			const events = ['mousemove', 'mousedown', 'mouseup', 'mouseleave', 'mouseenter', 'click'];
+			events.forEach((event) => {
+				canvas.addEventListener(event, function (e) {
+					worker.postMessage({
+						type: event,
+						data: { x: e.offsetX, y: e.offsetY, button: e.button }
+					});
+				});
+			});
 
 			// update worker
 			(function tick(t) {
-				worker.postMessage({ rAF: t });
+				worker.postMessage({ type: 'update', data: t });
 				requestAnimationFrame(tick);
 			})(performance.now());
-		}, 10);
-
-		return id;
+		};
 	}
 
 	// extract tenor urls
@@ -124,7 +92,7 @@
 	data = data.replace(/(data:image\/png;base64,[^\s]+)/g, '');
 
 	// extract code enclosers indicated with ``` code ```
-	const code = message.text.match(/(\`\`\`[\s\S]+?\`\`\`)/g) || [];
+	const codes = message.text.match(/(\`\`\`[\s\S]+?\`\`\`)/g) || [];
 	data = data.replace(/(\`\`\`[\s\S]+?\`\`\`)/g, '');
 
 	// create a list of text + urls
@@ -132,23 +100,13 @@
 	data = data.map((x) => {
 		if (x.match(/(https?:\/\/[^\s]+)/g))
 			return { html: '<a href="' + x + '" target="_blank">' + x + '</a>', text: '' };
-		return { text: x, html: '' };
+		return { text: x, html: '', code: null };
 	});
 
-	// if message contains embedded code
-	if (code.length > 0) {
-		const id = createWorker(code[0].substring(4, code[0].length - 5));
-		data = [
-			...data,
-			{
-				text: '',
-				html: `
-					<canvas id="canvas${id}" oncontextmenu="return false;" style="margin-bottom: -30px"></canvas>
-					<p class="error" style="display: none" id="error${id}"></p>
-				`
-			}
-		];
-	}
+	// add embedded code
+	codes.forEach((code) => {
+		data.push({ text: '', html: '', code: createWorker(code.substring(3, code.length - 4)) });
+	});
 </script>
 
 <div class="align" style="flex-direction: {owner ? 'row' : 'row-reverse'}">
@@ -173,9 +131,15 @@
 			<br />
 		{/if}
 		<div class="text">
-			{#each data as { text, html }}
+			{#each data as { text, html, code }}
 				{text}
 				{@html html}
+				{#if code}
+					<div oncontextmenu="return false;" class="code">
+						<canvas style="display: none" width="400"  height="400"/>
+						<p><i on:click={code} class="play bi bi-play-fill">Click to run </i></p>
+					</div>
+				{/if}
 			{/each}
 		</div>
 		{#each gifs as gif}
@@ -257,7 +221,8 @@
 	}
 
 	p {
-		color: white;
+		color: red;
+		line-height: 0px;
 		font-weight: bolder;
 	}
 
@@ -266,9 +231,20 @@
 		margin-right: 10px;
 	}
 
+	.play {
+		cursor: pointer;
+		color: gray;
+		text-align: center;
+		font-size: 30px;
+		user-select: none;
+	}
+
+
 	@media (max-width: 500px) {
 		.profile-pic {
 			display: none;
 		}
 	}
+
+
 </style>
