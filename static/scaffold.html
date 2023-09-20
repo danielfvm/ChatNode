@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Chat Node Program</title>
+	</head>
+	<body>
+		<canvas width="400px" height="400px"></canvas>
+
+		<script>
+			//// START OF INSERTED CODE ////
+$CODE
+			//// END OF INSERTED CODE ////
+
+			// Move events
+			['mousemove', 'mousedown', 'mouseup', 'mouseleave', 'mouseenter', 'click'].forEach((event) => {
+				document.addEventListener(event, (e) => {
+					window["on"+event] && window["on"+event]({
+						x: e.offsetX, 
+						y: e.offsetY, 
+						button: e.button
+					});
+				});
+			});
+
+			// Keyboard events
+			['keydown', 'keyup', 'keypress'].forEach((event) => {
+				document.addEventListener(event, (e) => {
+					window["on"+event] && window["on"+event]({
+						alt: e.altKey,
+						ctrl: e.ctrlKey,
+						shift: e.shiftKey,
+						key: e.key,
+						code: e.code,
+						meta: e.metaKey
+					});
+				});
+			});
+
+			// Init event
+			window.oninit && window.oninit(document.querySelector('canvas'));
+
+			// Update events 
+			(function tick(time) {
+				window.onupdate && window.onupdate(time);
+				requestAnimationFrame(tick);
+			})(performance.now());
+		</script>
+
+		<style>
+		</style>
+	</body>
+</html>

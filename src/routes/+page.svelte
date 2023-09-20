@@ -22,6 +22,7 @@
 	let chats = [];
 	let selectedChat;
 	let chatscroll;
+	let chatboxNode;
 
 	let popupMessage = '';
 
@@ -89,12 +90,17 @@
 		};
 
 		chat.onMessage = (_message) => {
-			if (chat != selectedChat) 
-				return;
+			if (chat != selectedChat) return;
 
 			selectedChat.messages = selectedChat.messages;
 
-			if (chatscroll && chatscroll.scrollHeight > chatscroll.scrollTop + chatscroll.clientHeight / 2)
+			if (chatscroll)
+				console.log(chatscroll.scrollHeight, chatscroll.scrollTop + chatscroll.clientHeight);
+			if (
+				chatscroll &&
+				(chatscroll.scrollHeight < chatscroll.scrollTop + chatscroll.clientHeight * 1.1 ||
+					_message.profile == profile)
+			)
 				setTimeout(() => {
 					chatscroll.scrollBy({
 						left: 0,
@@ -127,7 +133,7 @@
 			if (c == chat) chat.close();
 			return c != chat;
 		});
-			console.log("CLOSE", chats);
+		console.log('CLOSE', chats);
 
 		// update local storage for future reloading
 		localStorage.setItem('chats', JSON.stringify(chats.map((x) => x.getLink())));
@@ -149,6 +155,22 @@
 			const res = parseLink(link);
 			if (!res) continue;
 			createChat(Chat.joinChat(profile, res.chat, res.peers));
+		}
+	}
+
+	function onMessageEdit(msg) {
+		if (msg.program) {
+			chatboxNode.setText(msg.text);
+			chatboxNode.setEndOfContenteditable();
+			chatboxNode.focus();
+
+			chatboxNode.setProgram(msg.program.trim());
+			chatboxNode.openMenu(true);
+			setTimeout(() => chatboxNode.changeMenuTab(3), 10);
+		} else {
+			chatboxNode.setText(msg.data);
+			chatboxNode.setEndOfContenteditable();
+			chatboxNode.focus();
 		}
 	}
 
@@ -207,6 +229,7 @@
 					showProfile={showProfilePic(message)}
 					owner={message.profile == profile}
 					on:profile={(e) => (openProfile = e.detail)}
+					on:edit={() => onMessageEdit(message)}
 				/>
 			{/each}
 			<div style="height: 140px;" />
@@ -216,6 +239,7 @@
 	<Chatbox
 		{profile}
 		editing={!openProfile}
+	 	bind:this={chatboxNode}
 		on:message={(e) => sendMessage(e.detail.message)}
 		on:profile={(e) => (openProfile = e.detail)}
 	/>

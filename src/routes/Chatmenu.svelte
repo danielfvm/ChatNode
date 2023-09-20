@@ -3,8 +3,7 @@
 	import { fly, fade } from 'svelte/transition';
 	import { createEventDispatcher } from 'svelte';
 
-	export let visible;
-	export let menubox;
+	export let visible = false;
 
 	const dispatch = createEventDispatcher();
 
@@ -12,7 +11,7 @@
 	let entries = [null, null, null, null];
 	let items = [null, null, null, null];
 	let background;
-	let code;
+	let codeNode;
 
 	let files;
 	let gifs = [];
@@ -21,8 +20,9 @@
 	let next = '0';
 	let scrolled = false;
 	let hoverText = null;
+	let editor = null;
 
-	let previewCode = `
+	export let previewCode = `
 let ctx;
 
 function oninit(canvas) {
@@ -38,8 +38,6 @@ function onupdate() {
 	ctx.fillRect(100, 100, 200, 200);
 }`;
 
-
-
 	fetch('https://g.tenor.com/v1/trending?key=LIVDSRZULELA&limit=8')
 		.then((res) => res.json())
 		.then((data) => {
@@ -48,7 +46,7 @@ function onupdate() {
 			console.log(gifs);
 		});
 
-	function changeMenu(index) {
+	export function changeMenu(index) {
 		entries.forEach((entry) => entry.classList.remove('selected'));
 		entries[index].classList.add('selected');
 
@@ -65,7 +63,10 @@ function onupdate() {
 		}
 
 		if (index == 3) {
-			let editor = CodeMirror.fromTextArea(code, {
+			if (editor && editor.toTextArea()) 
+				editor.toTextArea().remove();
+
+			editor = CodeMirror.fromTextArea(codeNode, {
 				lineNumbers: true,
 				mode: {
 					name: 'javascript',
@@ -80,18 +81,19 @@ function onupdate() {
 			editor.display.input.textarea.onkeyup = editor.display.input.textarea.onchange = () => {
 				previewCode = editor.doc.children[0].lines.map(x => x.text).join('\n');
 			}
+
+			editor.setSize(null, 600);
 		}
+	}
+
+	export function setProgram(program) {
+		previewCode = program;
 	}
 
 	function searchGifs() {
 		if (timeout) clearTimeout(timeout);
 		timeout = setTimeout(() => {
-			fetch(
-				'https://g.tenor.com/v1/search?q=' +
-					encodeURI(search) +
-					'&key=LIVDSRZULELA&limit=8&pos=' +
-					next
-			)
+			fetch(`https://g.tenor.com/v1/search?q=${encodeURI(search)}&key=LIVDSRZULELA&limit=8&pos=${next}`)
 				.then((res) => res.json())
 				.then((data) => {
 					gifs = [...gifs, ...data.results];
@@ -154,7 +156,7 @@ function onupdate() {
 </script>
 
 {#if visible}
-	<div class="menuwindow" transition:fly={{ y: 20 }} bind:this={menubox}>
+	<div class="menuwindow" transition:fly={{ y: 20 }}>
 		<div class="menu shadow">
 			<i
 				bind:this={entries[0]}
@@ -163,7 +165,7 @@ function onupdate() {
 			/>
 			<i bind:this={entries[1]} on:click={() => changeMenu(1)} class="entry bi bi-filetype-gif" />
 			<i bind:this={entries[2]} on:click={() => changeMenu(2)} class="entry bi bi-card-image" />
-			<i bind:this={entries[3]} on:click={() => changeMenu(3)} class="entry bi bi-code-slash" />
+			<i bind:this={entries[3]} on:click={() => changeMenu(3, previewCode)} class="entry bi bi-code-slash" />
 		</div>
 
 		<div bind:this={items[0]} class="item shadow" style="display: block">
@@ -235,7 +237,9 @@ function onupdate() {
 		</div>
 
 		<div bind:this={items[3]} class="item code shadow" style="display: none">
-			<textarea bind:this={code} value={previewCode} />
+			<div class="codetext">
+				<textarea bind:this={codeNode} value={previewCode} />
+			</div>
 		</div>
 	</div>
 	<div
@@ -247,8 +251,6 @@ function onupdate() {
 {/if}
 
 <style>
-
-
 	.background {
 		position: fixed;
 		background: rgba(0, 0, 0, 0.5);
@@ -260,7 +262,7 @@ function onupdate() {
 	}
 
 	.menuwindow {
-		width: 100%;
+		width: max-content;
 		position: absolute;
 		margin-left: 10px;
 		transform: translateY(-100px);
@@ -341,8 +343,15 @@ function onupdate() {
 		padding: 5px;
 		position: relative;
 	}
+
 	.code {
-		width: calc(100% - 150px) !important;
+		width: calc(100vw - 150px) !important;
+		height: 600px;
+	}
+
+	.codetext {
+		max-width: 600px;
+		height: 100%;
 	}
 
 	.item-list {
@@ -413,6 +422,10 @@ function onupdate() {
 
 		.code {
 			width: calc(100% - 24px) !important;
+		}
+
+		.menuwindow {
+			width: 100%;
 		}
 	}
 </style>

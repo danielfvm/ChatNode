@@ -1,143 +1,141 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
 	import { onDestroy } from 'svelte';
+	import { createWorker } from './Script.js';
 
 	export let owner;
 	export let message;
 	export let showProfile;
 
 	const dispatch = createEventDispatcher();
-	let worker;
-	const listeners = [];
+	let clipboardNode;
+	let canvasNode;
+	let messageNode;
+	let programState = false;
 
-	function format_two_digits(n) {
+	function formatTwoDigits(n) {
 		return n < 10 ? '0' + n : n;
 	}
 
 	function timeFormat(d) {
-		const hours = format_two_digits(d.getHours());
-		const minutes = format_two_digits(d.getMinutes());
+		const hours = formatTwoDigits(d.getHours());
+		const minutes = formatTwoDigits(d.getMinutes());
 		return hours + ':' + minutes;
 	}
 
-	function createWorker(code) {
-		return (self) => {
-			const canvas = self.target.parentNode.parentNode.children[0];
-			const text = self.target.parentNode.parentNode.children[1];
-
-			text.style.display = 'none';
-			canvas.style.display = 'block';
-
-			const response = `
-				const exit = (msg) => postMessage({ type: 'exit', msg: msg });
-
-				self.onmessage = (e) => {
-					self['on'+e.data.type] && self['on'+e.data.type](e.data.data);
-				};
-				${code}
-			`;
-
-			// create worker from code
-			const blob = new Blob([response], { type: 'application/javascript' });
-			worker = new Worker((window.URL || window.webkitURL).createObjectURL(blob));
-
-			// Test, used in all examples:
-			worker.onmessage = function (e) {
-				if (e.data.type == 'exit') {
-					console.log('Worker exits ' + (e.data.msg || ''));
-					worker.terminate();
-				}
-			};
-
-			worker.onerror = function (e) {
-				// set error msg
-				text.innerText = e.message;
-				text.style.display = 'block';
-
-				// hide canvas
-				canvas.style.display = 'none';
-
-				worker.terminate();
-			};
-
-			// send canvas to worker
-			const offscreen = canvas.transferControlToOffscreen();
-			worker.postMessage({ type: 'init', data: offscreen }, [offscreen]);
-
-			// mouse events
-			['mousemove', 'mousedown', 'mouseup', 'mouseleave', 'mouseenter', 'click'].forEach(
-				(event) => {
-					canvas.addEventListener(event, function (e) {
-						worker.postMessage({
-							type: event,
-							data: { x: e.offsetX, y: e.offsetY, button: e.button }
-						});
-					});
-				}
-			);
-
-			['keydown', 'keyup', 'keypress'].forEach((event) => {
-				listeners.push({
-					event: event,
-					callback: (e) => {
-						worker.postMessage({
-							type: event,
-							data: {
-								alt: e.altKey,
-								ctrl: e.ctrlKey,
-								shift: e.shiftKey,
-								key: e.key,
-								code: e.code,
-								meta: e.metaKey
-							}
-						});
-					}
-				});
-
-				document.addEventListener(event, listeners[listeners.length - 1].callback);
-			});
-
-			// update worker
-			(function tick(time) {
-				worker.postMessage({ type: 'update', data: time });
-				requestAnimationFrame(tick);
-			})(performance.now());
+	function escapeHtml(text) {
+		var map = {
+			'&': '&amp;',
+			'<': '&lt;',
+			'>': '&gt;',
+			'"': '&quot;',
+			"'": '&#039;'
 		};
+
+		return text.replace(/[&<>"']/g, function (m) {
+			return map[m];
+		});
 	}
 
-	onDestroy(() => {
-		if (worker) {
-			worker.terminate();
-			listeners.forEach((listener) => document.removeEventListener(listener.event, listener.callback));
-		}
-	});
-
-	// extract tenor urls
-	const gifs = message.text.match(/(https?:\/\/media.tenor.com\/[^\s]+)/g) || [];
-	let data = message.text.replace(/(https?:\/\/media.tenor.com\/[^\s]+)/g, '');
-
-	const pngs = message.text.match(/(data:image\/png;base64,[^\s]+)/g) || [];
-	data = data.replace(/(data:image\/png;base64,[^\s]+)/g, '');
-
-	// extract code enclosers indicated with ``` code ```
-	const codes = message.text.match(/(\`\`\`[\s\S]+?\`\`\`)/g) || [];
-	data = data.replace(/(\`\`\`[\s\S]+?\`\`\`)/g, '');
-
 	// create a list of text + urls
-	data = data.split(/(https?:\/\/[^\s]+)/g);
-	data = data.map((x) => {
-		if (x.match(/(https?:\/\/[^\s]+)/g))
-			return { html: '<a href="' + x + '" target="_blank">' + x + '</a>', text: '' };
-		return { text: x, html: '', code: null };
-	});
+	const splitUrlAndCode = /(https?:\/\/[^\s]+)|(\`\`\`[\s\S]+?\`\`\`)/g;
+	let data = message.text
+		.split(splitUrlAndCode)
+		.filter((x) => typeof x !== 'undefined')
+		.map((x) => {
+			// code
+			if (x.match(/(\`\`\`[\s\S]+?\`\`\`)/g))
+				return {
+					html: `<textarea readonly class="messageCodePreview">${escapeHtml(
+						x.substring(3, x.length - 3)
+					).trim()}</textarea>`,
+					text: ''
+				};
+
+			// url
+			if (x.match(/(https?:\/\/[^\s]+)/g))
+				return {
+					html: '<a href="' + escapeHtml(x) + '" target="_blank">' + escapeHtml(x) + '</a>',
+					text: ''
+				};
+
+			// plain text
+			return { html: '', text: escapeHtml(x) };
+		});
 
 	// add embedded code
-	codes.forEach((code) => {
-		data.push({ text: '', html: '', code: createWorker(code.substring(3, code.length - 3)) });
+	let program = message.program
+		? createWorker(message.program, (state) => (programState = state))
+		: null;
+
+	// Remove code enclosers
+	onDestroy(() => {
+		data.forEach((x) => {
+			if (x.code) x.code.stop();
+		});
 	});
+
+	function clipboard() {
+		clipboardNode.classList.remove('bi-clipboard');
+		navigator.clipboard.writeText(message.text).then(
+			() => clipboardNode.classList.add('bi-clipboard-check-fill'),
+			(_) => clipboardNode.classList.add('bi-clipboard-x-fill')
+		);
+	}
+
+	function resetClipboard() {
+		clipboardNode.classList.add('bi-clipboard');
+		clipboardNode.classList.remove('bi-clipboard-check-fill');
+		clipboardNode.classList.add('bi-clipboard-remove-fill');
+	}
+
+	function toggleProgram() {
+		if (!program) return;
+
+		if (programState) {
+			program.stop();
+
+			// force rebuild of program widget
+			let oldProg = program;
+			program = null;
+			setTimeout(() => (program = oldProg), 10);
+		} else {
+			program.start(canvasNode, messageNode);
+		}
+	}
+
+	function download(filename, text) {
+		const element = document.createElement('a');
+		element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+		element.setAttribute('download', filename);
+
+		element.style.display = 'none';
+		document.body.appendChild(element);
+
+		element.click();
+
+		document.body.removeChild(element);
+	}
+
+	async function downloadProgram() {
+		if (!program) return;
+
+		const response = await fetch('scaffold.html');
+		const text = await response.text();
+
+		// Replace placeholder with code and add indent
+		const prog = message.program.trim().split('\n').map(x => '\t\t\t' + x).join('\n');
+		const code = text.replace('$CODE', prog);
+
+		download('scaffold.html', code);
+	}
 </script>
 
-<div class="align" style="flex-direction: {owner ? 'row' : 'row-reverse'}">
+<div
+	class="align"
+	style="flex-direction: {owner ? 'row' : 'row-reverse'}"
+	on:mouseenter={resetClipboard}
+>
 	<div
 		class="profile-pic image-cropper hover"
 		style="visibility: {showProfile ? 'visible' : 'hidden'}"
@@ -159,27 +157,68 @@
 			<br />
 		{/if}
 		<div class="text">
-			{#each data as { text, html, code }}
+			{#each data as { text, html }}
 				{text}
 				{@html html}
-				{#if code}
-					<div oncontextmenu="return false;" class="code">
-						<canvas style="display: none" width="400" height="400" />
-						<p><i on:click={code} class="play bi bi-play-fill">Click to run </i></p>
-					</div>
-				{/if}
 			{/each}
 		</div>
-		{#each gifs as gif}
+		{#each message.gifs as gif}
 			<img class="gif" src={gif} />
 		{/each}
-		{#each pngs as png}
+		{#each message.pngs as png}
 			<img class="gif" src={png} />
 		{/each}
+		{#if program}
+			<div oncontextmenu="return false;" class="code">
+				<canvas bind:this={canvasNode} style="display: none" width="400" height="400" />
+				<p bind:this={messageNode}>
+					<i on:click={toggleProgram} class="play bi bi-play-fill"> Click to run </i>
+				</p>
+			</div>
+		{/if}
+	</div>
+
+	<div class="quick-menu">
+		<i bind:this={clipboardNode} class="bi bi-clipboard" on:click={clipboard} />
+
+		{#if owner}
+			<i class="bi bi-pencil" on:click={() => dispatch('edit')} />
+		{/if}
+
+		<!---
+		{#if message.gifs.length > 0 || program}
+			<i class="bi bi-star" />
+		{/if}
+		-->
+
+		{#if program}
+			<i class="bi bi-download" on:click={downloadProgram} />
+			<i class="bi bi-{programState ? 'stop' : 'play'}" on:click={toggleProgram} />
+		{/if}
 	</div>
 </div>
 
 <style>
+	.align .quick-menu {
+		color: transparent;
+	}
+
+	.align:hover .quick-menu {
+		margin-top: 15px;
+	}
+
+	.align:hover .quick-menu i {
+		cursor: pointer;
+		background: rgba(0, 0, 0, 0.1);
+		padding: 10px;
+		border-radius: 10px;
+		color: white;
+	}
+
+	.align:hover .quick-menu i:hover {
+		background: rgba(0, 0, 0, 0.4);
+	}
+
 	.gif {
 		width: 100%;
 		max-width: 400px;
@@ -191,6 +230,11 @@
 		display: flex;
 		flex: 1;
 		width: 100%;
+		transition: background 0.2s;
+	}
+
+	.align:hover {
+		background: rgba(0, 0, 0, 0.03);
 	}
 
 	.chat {
@@ -273,6 +317,14 @@
 
 	@media (max-width: 500px) {
 		.profile-pic {
+			display: none;
+		}
+
+		.chat {
+			max-width: 100%;
+		}
+
+		.quick-menu {
 			display: none;
 		}
 	}

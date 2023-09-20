@@ -105,10 +105,50 @@ export class User {
 }
 
 export class MessageData {
-    constructor(text, user) {
+    constructor(data, user) {
         this.time = new Date();
-        this.text = text.trim().substring(0, 1024 * 1024);
         this.user = user;
+        this.data = data;
+    }
+
+    set data(data) {
+        this._data = data.trim().substring(0, 1024 * 1024);
+
+        // extract tenor urls
+        this._gifs = this._data.match(/(https?:\/\/media.tenor.com\/[^\s]+)/g) || [];
+        this._text = this._data.replace(/(https?:\/\/media.tenor.com\/[^\s]+)/g, '');
+
+        this._pngs = this._text.match(/(data:image\/png;base64,[^\s]+)/g) || [];
+        this._text = this._text.replace(/(data:image\/png;base64,[^\s]+)/g, '');
+
+
+        // extract program enclosers indicated with ```prog code ```
+        this._prog = (this._text.match(/(\`\`\`prog[\s\S]+?\`\`\`)/g) || [])[0];
+        this._text = this._text.replace(/(\`\`\`prog[\s\S]+?\`\`\`)/g, '');
+
+        if (this._prog) {
+            this._prog = this._prog.substring(7, this._prog.length - 3);
+        }
+    }
+
+    get data() {
+        return this._data;
+    }
+
+    get text() {
+        return this._text;
+    }
+
+    get gifs() {
+        return this._gifs;
+    }
+
+    get pngs() {
+        return this._pngs;
+    }
+
+    get program() {
+        return this._prog;
     }
 
     get profile() {

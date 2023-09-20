@@ -1,20 +1,21 @@
 <script>
 	import { onMount } from 'svelte';
 	import { createEventDispatcher } from 'svelte';
-	import { scale, fly } from 'svelte/transition';
+	import { scale } from 'svelte/transition';
 	import Chatmenu from './Chatmenu.svelte';
 
 	export let editing;
 	export let profile;
+	export let changeMenu;
 
-	let menubox;
 	let message;
 	let savedRange;
 	let showMenu = false;
+	let chatmenuNode;
 
 	const dispatch = createEventDispatcher();
 
-	function focus() {
+	export function focus() {
 		if (message && message != document.activeElement && editing) {
 			message.focus();
 
@@ -24,6 +25,42 @@
 				s.addRange(savedRange);
 			}
 		}
+	}
+
+	export function setText(text) {
+		message.innerText = text;
+	}
+
+	export function setEndOfContenteditable() {
+		const range = document.createRange(); //Create a range (a range is a like the selection but invisible)
+		range.selectNodeContents(message); //Select the entire contents of the element with the range
+		range.collapse(false); //collapse the range to the end point. false means collapse to end rather than the start
+		const selection = window.getSelection(); //get the selection object (allows you to change selection)
+		selection.removeAllRanges(); //remove any selections already made
+		selection.addRange(range); //make the range you have just created the visible selection
+	}
+
+	export function changeMenuTab(index) {
+		chatmenuNode.changeMenu(index);
+	}
+
+	export function openMenu(open) {
+		showMenu = open;
+	}
+
+	export function setProgram(program) {
+		chatmenuNode.setProgram(program);	
+	}
+
+	// https://stackoverflow.com/a/10672378
+	function supportsPlainText() {
+		const  d = document.createElement('div');
+		try {
+			d.contentEditable = 'PLAINtext-onLY';
+		} catch (e) {
+			return false;
+		}
+		return d.contentEditable == 'plaintext-only';
 	}
 
 	function save() {
@@ -37,7 +74,6 @@
 		message.innerText = '';
 
 		showMenu = false;
-
 	}
 
 	onMount(() => {
@@ -55,9 +91,13 @@
 
 			// Delayed in order to see the innerText length after editing (especially with marked text)
 			setTimeout(() => {
-				if (message && message.innerText[0] == '\n' && message.innerText.length <= 1 && (e.key == 'Delete' || e.key == 'Backspace')) {
-					console.log("test");
-					message.innerHTML = "";
+				if (
+					message &&
+					message.innerText[0] == '\n' &&
+					message.innerText.length <= 1 &&
+					(e.key == 'Delete' || e.key == 'Backspace')
+				) {
+					message.innerHTML = '';
 				}
 			}, 4);
 
@@ -96,12 +136,15 @@
 					bind:this={message}
 					id="message"
 					type="text"
-					contenteditable="true"
+					contenteditable={supportsPlainText() ? "plaintext-only" : "true"}
 					placeholder="Type a message"
 				/>
 
 				<td class="send">
-					<i class="{showMenu ? 'open' : ''} dots bi bi-three-dots-vertical" on:click={toggleMenu} />
+					<i
+						class="{showMenu ? 'open' : ''} dots bi bi-three-dots-vertical"
+						on:click={toggleMenu}
+					/>
 					<i class="bi bi-send-fill" on:click={send} />
 				</td>
 			</tr>
@@ -110,8 +153,8 @@
 </div>
 
 <Chatmenu
-	visible={showMenu}
-	bind:menubox
+	bind:this={chatmenuNode}
+	bind:visible={showMenu}
 	on:emoji={(x) => (message.innerText += x.detail)}
 	on:gif={(x) => {
 		message.innerText += x.detail;
@@ -145,9 +188,12 @@
 	.send {
 		vertical-align: top;
 		float: right;
-		margin-left: 20px;
 		color: gray;
+		margin-right: -20px;
+		margin-left: 10px;
 		cursor: pointer;
+		width: 60px;
+		height: 20px;
 	}
 
 	[contenteditable='true']:empty + i:hover {
@@ -191,8 +237,8 @@
 	}
 
 	.chat {
-		max-width: 60%;
 		min-width: 250px;
+		max-width: calc(100vw - 110px);
 
 		background: #faf0e6;
 		color: #afaf70;
@@ -255,5 +301,4 @@
 			min-width: calc(100vw - 50px);
 		}
 	}
-
 </style>
