@@ -77,7 +77,7 @@
 
 	function clipboard() {
 		clipboardNode.classList.remove('bi-clipboard');
-		navigator.clipboard.writeText(message.text).then(
+		navigator.clipboard.writeText(message.data).then(
 			() => clipboardNode.classList.add('bi-clipboard-check-fill'),
 			(_) => clipboardNode.classList.add('bi-clipboard-x-fill')
 		);
