@@ -9,6 +9,7 @@
 	import Profile from './Profile.svelte';
 
 	import defaultProfilePicture from '$lib/images/profile.png';
+	import Userlist from './Userlist.svelte';
 
 	let profile = {
 		picture: defaultProfilePicture,
@@ -25,6 +26,8 @@
 	let chatboxNode;
 
 	let popupMessage = '';
+
+	let profiles = [];
 
 	function parseLink(link) {
 		try {
@@ -82,7 +85,7 @@
 			closeChat(chats[idx]);
 		}
 
-		chat.onUserJoined = (_user) => {
+		chat.onUserChange = (_user) => {
 			if (chat != selectedChat) return;
 			rebuildChat();
 			chat.refreshTitle();
@@ -174,15 +177,32 @@
 		}
 	}
 
+	$: {
+		profiles = [ profile ];
+
+		if (selectedChat) {
+			profiles.push(...selectedChat.users.map(x => x.profile).filter(x => x.loaded));
+		}
+	};
+
 	onMount(() => {
 		window.scrollTo(0, document.body.scrollHeight);
 
+		// load profile from local storage
 		localStorage.getItem('profile') && (profile = JSON.parse(localStorage.getItem('profile')));
 
+		// get invite from url
 		const invite = getInvite();
-		loadOldChat();
-		if (invite) createChat(Chat.joinChat(profile, invite.chat, invite.peers));
 
+		// we first load the old chats
+		loadOldChat();
+
+		// and update the old chat if we have a new invite to same chat
+		if (invite) {
+			createChat(Chat.joinChat(profile, invite.chat, invite.peers));
+		}
+
+		// open last chat in list
 		openChat(chats[chats.length - 1]);
 	});
 </script>
@@ -195,14 +215,14 @@
 </svelte:head>
 
 <Header
-	{profile}
-	on:profile={(e) => (openProfile = e.detail)}
 	on:closeChat={(e) => closeChat(e.detail)}
 	on:openChat={(e) => openChat(e.detail)}
 	on:createChat={() => openChat(createChat(Chat.createChat(profile)))}
 	bind:chats
 	bind:selectedChat
 />
+
+<Userlist profiles={profiles} on:profile={(e) => (openProfile = e.detail)} />
 
 <Info bind:message={popupMessage} />
 
@@ -239,7 +259,7 @@
 	<Chatbox
 		{profile}
 		editing={!openProfile}
-	 	bind:this={chatboxNode}
+		bind:this={chatboxNode}
 		on:message={(e) => sendMessage(e.detail.message)}
 		on:profile={(e) => (openProfile = e.detail)}
 	/>

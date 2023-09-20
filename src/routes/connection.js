@@ -30,12 +30,7 @@ export class User {
         this.conn = conn;
 
         // Remove user if not connected after 10 second
-        setTimeout(() => {
-            if (!this.isConnected()) {
-                console.log("Timeout after 10sec");
-                this.chat.removeUser(this);
-            }
-        }, 10000);
+        this.resetKeepAliveTimeout();
 
         this.conn.on('open', () => {
             console.log('Now connected to: ' + this.conn.peer);
@@ -52,13 +47,25 @@ export class User {
         this.conn.on('error', (e) => console.log("!error") || this.chat.removeUser(this));
     }
 
+    keepAliveTimeout() {
+        console.error("Keep alive timeout");
+        this.chat.removeUser(this);
+        this.chat.onUserChange(this);
+    }
+
+    resetKeepAliveTimeout() {
+        if (this._keepAliveTimeout)
+            clearTimeout(this._keepAliveTimeout);
+        this._keepAliveTimeout = setTimeout(this.keepAliveTimeout.bind(this), 10000);
+    }
+
     sendData(data) {
         this.conn.send(JSON.stringify(data));
     }
 
     handleData(data) {
         const message = tryParse(data);
-        console.log("data", message);
+
         if (message == null)
             return;
 
@@ -66,16 +73,16 @@ export class User {
             case 'profile':
                 if (this.chat.name != message.chat) {
                     this.chat.removeUser(this);
+                    this.chat.onUserChange(this);
                 } else if (this.profile != message.profile) {
                     this.profile.picture = message.profile.picture || defaultProfilePicture;
-                    console.log(this.profile.picture.length);
                     this.profile.picture = this.profile.picture.length > 1024 * 512 ? defaultProfilePicture : this.profile.picture; // if image to large, fallback to default
                     this.profile.name = (message.profile.name || this.profile.name).substring(0, 20);
                     this.profile.pronouns = (message.profile.pronouns || this.profile.pronouns).substring(0, 20);
                     this.profile.bio = (message.profile.bio || this.profile.bio).substring(0, 256);
                     this.profile.loaded = true;
 
-                    this.chat.onUserJoined(this);
+                    this.chat.onUserChange(this);
                 }
                 break;
 
@@ -90,8 +97,13 @@ export class User {
                 break;
 
             case 'message':
-                this.chat.writeMessage(new MessageData(message.text || "", this));
+                this.chat.writeMessage(new MessageData(message.data || "", this));
                 break;
+
+            case 'ping':
+                this.resetKeepAliveTimeout();
+                break;
+                
         }
     }
 
@@ -165,7 +177,7 @@ export class Chat {
         this.peerId = null;
         this.onOpen = () => {};
         this.onMessage = (_msg) => {};
-        this.onUserJoined = (_user) => {};
+        this.onUserChange = (_user) => {};
 
         this.peer = new Peer();
         this.peer.on('open', (id) => {
@@ -173,7 +185,7 @@ export class Chat {
             this.peerId = id;
 
             this.onOpen();
-            this.onUserJoined(null);
+            this.onUserChange(null);
         });
 
         this.peer.on('close', () => {
@@ -188,6 +200,10 @@ export class Chat {
             console.log("Connection from: " + conn.peer);
             this.addUser(new User(this, conn));
         });
+
+        this.keepAliveInterval = setInterval(() => {
+            this.broadcast({type: 'ping'});
+        }, 5000);
     }
 
     // Add user to chat except if they are already in the list
@@ -199,11 +215,10 @@ export class Chat {
     }
 
     writeMessage(msg) {
-        console.log("write message: ", msg.text, " ", msg.profile.name);
         this.messages.push(msg);
         this.onMessage(msg);
         if (this.profile == msg.profile) {
-            this.users.forEach(user => user.sendData({type: 'message', text: msg.text}));
+            this.users.forEach(user => user.sendData({type: 'message', data: msg.data}));
             console.log("send to " + this.users.length);
         }
     }
@@ -271,5 +286,6 @@ export class Chat {
     close() {
         console.log(this.peer);
         this.peer.disconnect();
+        clearTimeout(this.keepAliveInterval);
     }
 }

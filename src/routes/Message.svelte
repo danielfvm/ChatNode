@@ -127,7 +127,7 @@
 		const prog = message.program.trim().split('\n').map(x => '\t\t\t' + x).join('\n');
 		const code = text.replace('$CODE', prog);
 
-		download('scaffold.html', code);
+		download('script.html', code);
 	}
 </script>
 
