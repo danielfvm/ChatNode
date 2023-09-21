@@ -1,3 +1,25 @@
+// https://stackoverflow.com/a/17591386
+function convertURIToImageData(URI) {
+	return new Promise(function (resolve, reject) {
+		if (URI == null) 
+			return reject();
+
+		const canvas = document.createElement('canvas');
+		const context = canvas.getContext('2d');
+		const image = new Image();
+		image.crossOrigin = "anonymous";
+		image.onload = () => {
+			canvas.width = image.width;
+			canvas.height = image.height;
+			context.drawImage(image, 0, 0, canvas.width, canvas.height);
+			resolve(context.getImageData(0, 0, canvas.width, canvas.height));
+		};
+
+		image.onerror = reject;
+		image.src = URI;
+	});
+}
+
 export function createWorker(code, onstate = (_state) => {}) {
 	let listeners = [];
 	let worker;
@@ -8,7 +30,26 @@ export function createWorker(code, onstate = (_state) => {}) {
 		text.style.display = 'none';
 		canvas.style.display = 'block';
 
-		const response = `const exit = (msg) => postMessage({ type: 'exit', msg: msg });self.onmessage = (e) => { self['on'+e.data.type] && self['on'+e.data.type](e.data.data); }; ${code}`;
+
+		const response = `
+		const _queue = {};
+		const exit = (msg) => postMessage({ type: 'exit', msg: msg });
+		const loadImage = (uri) => new Promise((res, rej) => {
+			postMessage({ type: 'loadImage', uri });
+			_queue[uri] = { res, rej };
+		});
+
+		self.onmessage = (e) => { 
+			if (e.data.type == 'loadImage') {
+				if (e.data.error)
+					_queue[e.data.uri].rej(e.data.error);
+				else
+					_queue[e.data.uri].res(e.data.data);
+				delete _queue[e.data.uri];
+			} else {
+				e.data.type && self['on'+e.data.type] && self['on'+e.data.type](e.data.data); 
+			}
+		};`.replace('\n', '') + code;
 
 		// create worker from code
 		const blob = new Blob([response], {type: 'application/javascript'});
@@ -20,6 +61,14 @@ export function createWorker(code, onstate = (_state) => {}) {
 				console.log('Worker exits ' + (e.data.msg || ''));
 				worker.terminate();
 				onstate(false);
+			}
+
+			if (e.data.type == 'loadImage' && e.data.uri) {
+				convertURIToImageData(e.data.uri).then((imageData) => {
+					worker.postMessage({type: 'loadImage', uri: e.data.uri, data: imageData});
+				}, (e) => {
+					worker.postMessage({type: 'loadImage', uri: e.data.uri, error: e});
+				});
 			}
 		};
 
