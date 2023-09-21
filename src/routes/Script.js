@@ -12,7 +12,7 @@ function convertURIToImageData(URI) {
 			canvas.width = image.width;
 			canvas.height = image.height;
 			context.drawImage(image, 0, 0, canvas.width, canvas.height);
-			resolve(context.getImageData(0, 0, canvas.width, canvas.height));
+			createImageBitmap(context.getImageData(0, 0, canvas.width, canvas.height)).then(resolve, reject);
 		};
 
 		image.onerror = reject;
