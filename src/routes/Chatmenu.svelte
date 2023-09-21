@@ -2,6 +2,8 @@
 	import { emojis } from './emoji';
 	import { fly, fade } from 'svelte/transition';
 	import { createEventDispatcher } from 'svelte';
+	import { createWorker } from './Script.js';
+	import { onDestroy } from 'svelte';
 
 	export let visible = false;
 
@@ -21,6 +23,11 @@
 	let scrolled = false;
 	let hoverText = null;
 	let editor = null;
+	let textNode = null;
+	let clipboardNode = null;
+	let canvasContainer = null;
+	let worker;
+	let running;
 
 	export let previewCode = `
 let ctx;
@@ -43,7 +50,6 @@ function onupdate() {
 		.then((data) => {
 			gifs = data.results;
 			next = data.next;
-			console.log(gifs);
 		});
 
 	export function changeMenu(index) {
@@ -63,8 +69,7 @@ function onupdate() {
 		}
 
 		if (index == 3) {
-			if (editor && editor.toTextArea()) 
-				editor.toTextArea().remove();
+			if (editor && editor.toTextArea()) editor.toTextArea().remove();
 
 			editor = CodeMirror.fromTextArea(codeNode, {
 				lineNumbers: true,
@@ -72,18 +77,37 @@ function onupdate() {
 					name: 'javascript',
 					globalVars: true
 				},
-				extraKeys: {"Ctrl-Space": "autocomplete"},
+				extraKeys: { 'Ctrl-Space': 'autocomplete' },
 				autoCloseBrackets: true,
 				autoCloseTags: true,
-				matchBrackets: true,
+				matchBrackets: true
 			});
 
 			editor.display.input.textarea.onkeyup = editor.display.input.textarea.onchange = () => {
-				previewCode = editor.doc.children[0].lines.map(x => x.text).join('\n');
-			}
+				previewCode = editor.doc.children.map(x => x.lines.map((y) => y.text).join('\n')).join('\n');
+			};
 
 			editor.setSize(null, 600);
+
+			startProgram();
 		}
+	}
+
+	function startProgram() {
+		if (worker) {
+			worker.stop();
+		}
+
+		worker = createWorker(previewCode, (_state) => {});
+
+		const canvas = document.createElement("canvas");
+		canvas.width = 400;
+		canvas.height = 400;
+
+		canvasContainer.innerHTML = "";
+		canvasContainer.appendChild(canvas);
+
+		worker.start(canvas, textNode);
 	}
 
 	export function setProgram(program) {
@@ -93,7 +117,9 @@ function onupdate() {
 	function searchGifs() {
 		if (timeout) clearTimeout(timeout);
 		timeout = setTimeout(() => {
-			fetch(`https://g.tenor.com/v1/search?q=${encodeURI(search)}&key=LIVDSRZULELA&limit=8&pos=${next}`)
+			fetch(
+				`https://g.tenor.com/v1/search?q=${encodeURI(search)}&key=LIVDSRZULELA&limit=8&pos=${next}`
+			)
 				.then((res) => res.json())
 				.then((data) => {
 					gifs = [...gifs, ...data.results];
@@ -116,6 +142,22 @@ function onupdate() {
 		if (e.target != background) return;
 		search = '';
 		dispatch('close');
+	}
+
+	function clipboard() {
+		clipboardNode.classList.remove('bi-copy');
+		navigator.clipboard.writeText(previewCode).then(
+			() => clipboardNode.classList.add('bi-check-lg'),
+			(_) => clipboardNode.classList.add('bi-x-lg')
+		);
+
+		setTimeout(() => resetClipboard(), 1000);
+	}
+
+	function resetClipboard() {
+		clipboardNode.classList.add('bi-copy');
+		clipboardNode.classList.remove('bi-check-lg');
+		clipboardNode.classList.remove('bi-x-lg');
 	}
 
 	$: if (files && files.length > 0) {
@@ -153,6 +195,10 @@ function onupdate() {
 		files = [];
 	}
 
+	onDestroy(() => {
+		if (worker) worker.stop();
+	});
+
 </script>
 
 {#if visible}
@@ -165,7 +211,11 @@ function onupdate() {
 			/>
 			<i bind:this={entries[1]} on:click={() => changeMenu(1)} class="entry bi bi-filetype-gif" />
 			<i bind:this={entries[2]} on:click={() => changeMenu(2)} class="entry bi bi-card-image" />
-			<i bind:this={entries[3]} on:click={() => changeMenu(3, previewCode)} class="entry bi bi-code-slash" />
+			<i
+				bind:this={entries[3]}
+				on:click={() => changeMenu(3, previewCode)}
+				class="entry bi bi-code-slash"
+			/>
 		</div>
 
 		<div bind:this={items[0]} class="item shadow" style="display: block">
@@ -239,6 +289,14 @@ function onupdate() {
 		<div bind:this={items[3]} class="item code shadow" style="display: none">
 			<div class="codetext">
 				<textarea bind:this={codeNode} value={previewCode} />
+				<div class="codebuttons">
+					<i class="bi bi-arrow-clockwise" on:click={startProgram} />
+					<i class="bi bi-copy" bind:this={clipboardNode} on:click={clipboard} />
+					<i class="bi bi-share-fill" on:click={ () => dispatch('gif', "```" + previewCode + "```") } />
+					<i class="bi bi-send-fill" on:click={ () => dispatch('gif', "```prog " + previewCode + "```") }  />
+				</div>
+				<div class="canvasContainer" bind:this={canvasContainer}></div>
+				<p bind:this={textNode} />
 			</div>
 		</div>
 	</div>
@@ -251,6 +309,38 @@ function onupdate() {
 {/if}
 
 <style>
+	.codetext p {
+		color: red;
+		position: absolute;
+		bottom: 0;
+		margin-left: 620px;
+		left: 0;
+	}
+
+	.codebuttons {
+		float: right;
+		position: absolute;
+		top: 0;
+		right: 0;
+		font-size: 30px;
+		margin: 20px;
+		margin-right: 10px;
+	}
+
+	.codebuttons i {
+		padding: 10px;
+		background: rgba(0, 0, 0, 0.1);
+		border-radius: 10px;
+	}
+
+	.codebuttons i:hover {
+		background: rgba(0, 0, 0, 0.2);
+	}
+
+	.codebuttons i:active {
+		background: rgba(0, 0, 0, 0.3);
+	}
+
 	.background {
 		position: fixed;
 		background: rgba(0, 0, 0, 0.5);
@@ -315,7 +405,7 @@ function onupdate() {
 	}
 
 	.selected {
-		background: #faf0e6;
+		background: #f5ebe2;
 		color: black;
 		padding-top: 5px;
 		box-shadow: 0px 10px 10px rgba(0, 0, 0, 0.15);
@@ -334,7 +424,7 @@ function onupdate() {
 	}
 
 	.item {
-		background: #faf0e6;
+		background: #f5ebe2;
 		height: 300px;
 		width: 255px;
 		overflow: hidden;
@@ -346,6 +436,7 @@ function onupdate() {
 
 	.code {
 		width: calc(100vw - 150px) !important;
+		max-width: 1100px;
 		height: 600px;
 	}
 
@@ -409,6 +500,13 @@ function onupdate() {
 
 	.hover:hover {
 		cursor: pointer;
+	}
+
+
+	@media (max-width: 1200px) {
+		.canvasContainer {
+			display: none;
+		}
 	}
 
 	@media (max-width: 500px) {

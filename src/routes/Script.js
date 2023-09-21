@@ -8,14 +8,7 @@ export function createWorker(code, onstate = (_state) => {}) {
 		text.style.display = 'none';
 		canvas.style.display = 'block';
 
-		const response = `
-			const exit = (msg) => postMessage({ type: 'exit', msg: msg });
-
-			self.onmessage = (e) => {
-				self['on'+e.data.type] && self['on'+e.data.type](e.data.data);
-			};
-			${code}
-		`;
+		const response = `const exit = (msg) => postMessage({ type: 'exit', msg: msg });self.onmessage = (e) => { self['on'+e.data.type] && self['on'+e.data.type](e.data.data); }; ${code}`;
 
 		// create worker from code
 		const blob = new Blob([response], {type: 'application/javascript'});
@@ -87,8 +80,9 @@ export function createWorker(code, onstate = (_state) => {}) {
 	};
 
 	const stop = () => {
-		if (worker)
+		if (worker) {
 			worker.terminate();
+		}
 
 		listeners.forEach((listener) =>
 			document.removeEventListener(listener.event, listener.callback)

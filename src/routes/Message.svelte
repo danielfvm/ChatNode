@@ -76,17 +76,17 @@
 	});
 
 	function clipboard() {
-		clipboardNode.classList.remove('bi-clipboard');
+		clipboardNode.classList.remove('bi-copy');
 		navigator.clipboard.writeText(message.data).then(
-			() => clipboardNode.classList.add('bi-clipboard-check-fill'),
-			(_) => clipboardNode.classList.add('bi-clipboard-x-fill')
+			() => clipboardNode.classList.add('bi-check-lg'),
+			(_) => clipboardNode.classList.add('bi-x-lg')
 		);
 	}
 
 	function resetClipboard() {
-		clipboardNode.classList.add('bi-clipboard');
-		clipboardNode.classList.remove('bi-clipboard-check-fill');
-		clipboardNode.classList.add('bi-clipboard-remove-fill');
+		clipboardNode.classList.add('bi-copy');
+		clipboardNode.classList.remove('bi-check-lg');
+		clipboardNode.classList.remove('bi-x-lg');
 	}
 
 	function toggleProgram() {
@@ -179,7 +179,7 @@
 	</div>
 
 	<div class="quick-menu">
-		<i bind:this={clipboardNode} class="bi bi-clipboard" on:click={clipboard} />
+		<i bind:this={clipboardNode} class="bi bi-copy" on:click={clipboard} />
 
 		{#if owner}
 			<i class="bi bi-pencil" on:click={() => dispatch('edit')} />
