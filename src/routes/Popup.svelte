@@ -47,7 +47,7 @@
 		height: 100%;
 		background: rgba(0, 0, 0, 0.7);
 		backdrop-filter: blur(3px);
-		z-index: 3;
+		z-index: 4;
 	}
 
 	.box {

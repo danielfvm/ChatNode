@@ -10,8 +10,8 @@
 	const dispatch = createEventDispatcher();
 
 	let search = '';
-	let entries = [null, null, null, null];
-	let items = [null, null, null, null];
+	let entries = [null, null, null, null, null];
+	let items = [null, null, null, null, null];
 	let background;
 	let codeNode;
 
@@ -27,7 +27,8 @@
 	let clipboardNode = null;
 	let canvasContainer = null;
 	let worker;
-	let running;
+	let saves = getSaves();
+
 
 	export let previewCode = `
 let ctx;
@@ -84,7 +85,9 @@ function onupdate() {
 			});
 
 			editor.display.input.textarea.onkeyup = editor.display.input.textarea.onchange = () => {
-				previewCode = editor.doc.children.map(x => x.lines.map((y) => y.text).join('\n')).join('\n');
+				previewCode = editor.doc.children
+					.map((x) => x.lines.map((y) => y.text).join('\n'))
+					.join('\n');
 			};
 
 			editor.setSize(null, 600);
@@ -100,11 +103,11 @@ function onupdate() {
 
 		worker = createWorker(previewCode, (_state) => {});
 
-		const canvas = document.createElement("canvas");
+		const canvas = document.createElement('canvas');
 		canvas.width = 400;
 		canvas.height = 400;
 
-		canvasContainer.innerHTML = "";
+		canvasContainer.innerHTML = '';
 		canvasContainer.appendChild(canvas);
 
 		worker.start(canvas, textNode);
@@ -199,6 +202,36 @@ function onupdate() {
 		if (worker) worker.stop();
 	});
 
+	function removeItemOnce(arr, value) {
+		var index = arr.indexOf(value);
+		if (index > -1) {
+			arr.splice(index, 1);
+		}
+		return arr;
+	}
+
+	function save(gif) {
+		saves = getSaves();
+
+		if (isSave(gif)) {
+			saves = removeItemOnce(saves, gif);
+		} else {
+			saves.push(gif);
+		}
+
+		localStorage.setItem('saves', JSON.stringify(saves));
+
+		// force rebuild
+		gifs = gifs; 
+	}
+
+	function isSave(gif) {
+		return saves.includes(gif);
+	}
+
+	function getSaves() {
+		return JSON.parse(localStorage.getItem('saves')) || [];
+	}
 </script>
 
 {#if visible}
@@ -216,6 +249,7 @@ function onupdate() {
 				on:click={() => changeMenu(3, previewCode)}
 				class="entry bi bi-code-slash"
 			/>
+			<i bind:this={entries[4]} on:click={() => changeMenu(4)} class="entry bi bi-star" />
 		</div>
 
 		<div bind:this={items[0]} class="item shadow" style="display: block">
@@ -242,6 +276,9 @@ function onupdate() {
 		<div bind:this={items[1]} class="item shadow" style="display: none">
 			<div class="item-list" on:scroll={() => loadOnScroll(items[1].children[0])}>
 				{#each gifs as gif}
+					<div class="item-star">
+						<i class="bi bi-{isSave(gif.media[0].gif.url) ? 'star-fill' : 'star'}" on:click={() => save(gif.media[0].gif.url)} />
+					</div>
 					<div class="image-cropper">
 						<img
 							src={gif.media[0].gif.preview}
@@ -292,11 +329,36 @@ function onupdate() {
 				<div class="codebuttons">
 					<i class="bi bi-arrow-clockwise" on:click={startProgram} />
 					<i class="bi bi-copy" bind:this={clipboardNode} on:click={clipboard} />
-					<i class="bi bi-share-fill" on:click={ () => dispatch('gif', "```" + previewCode + "```") } />
-					<i class="bi bi-send-fill" on:click={ () => dispatch('gif', "```prog " + previewCode + "```") }  />
+					<i
+						class="bi bi-share-fill"
+						on:click={() => dispatch('gif', '```' + previewCode + '```')}
+					/>
+					<i
+						class="bi bi-send-fill"
+						on:click={() => dispatch('gif', '```prog ' + previewCode + '```')}
+					/>
 				</div>
-				<div class="canvasContainer" bind:this={canvasContainer}></div>
+				<div class="canvasContainer" bind:this={canvasContainer} />
 				<p bind:this={textNode} />
+			</div>
+		</div>
+
+		<div bind:this={items[4]} class="item item-fav shadow" style="display: none">
+			<div class="item-list item-list-fav ">
+				{#each saves as gif}
+					<div class="item-star">
+						<i class="bi bi-{isSave(gif) ? 'star-fill' : 'star'}" on:click={() => save(gif)} />
+					</div>
+					<div class="image-cropper">
+						<img
+							src={gif}
+							class="hover"
+							draggable="false"
+							oncontextmenu="return false;"
+							on:click={(x) => dispatch('gif', x.target.src)}
+						/>
+					</div>
+				{/each}
 			</div>
 		</div>
 	</div>
@@ -309,6 +371,32 @@ function onupdate() {
 {/if}
 
 <style>
+
+	.item-list .item-star {
+		position: relative;
+		padding: 3px;
+		line-height: 25px;
+	}
+
+	.item-list .item-star i {
+		color: #ddd;
+		padding: 4px;
+		padding-left: 5px;
+		padding-right: 5px;
+		background: rgba(0, 0, 0, 0.1);
+		border-radius: 10px;
+	}
+
+	.item-list .item-star .bi-star-fill {
+		color: white;
+	}
+
+	.item-list .item-star i:hover {
+		color: whtie;
+		background: rgba(0, 0, 0, 0.3);
+		cursor: pointer;
+	}
+
 	.codetext p {
 		color: red;
 		position: absolute;
@@ -377,7 +465,7 @@ function onupdate() {
 	.menu {
 		background: #ebe1d8;
 		height: 50px;
-		width: 255px;
+		width: 280px;
 		overflow: hidden;
 		border-radius: 10px;
 		margin-top: 10px;
@@ -388,7 +476,7 @@ function onupdate() {
 		color: gray;
 
 		display: grid;
-		grid-template-columns: 1fr 1fr 1fr 1fr;
+		grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
 		padding: 5px;
 	}
 
@@ -417,7 +505,7 @@ function onupdate() {
 		background: #ebe1d8;
 		border-radius: 10px;
 		padding: 5px;
-		width: 235px;
+		width: 260px;
 		margin-top: 9px;
 		height: 30px;
 		padding-left: 15px;
@@ -425,14 +513,18 @@ function onupdate() {
 
 	.item {
 		background: #f5ebe2;
-		height: 300px;
-		width: 255px;
+		width: 280px;
 		overflow: hidden;
 		border-radius: 10px;
 		margin-left: 56px;
 		padding: 5px;
 		position: relative;
 	}
+
+	.item-fav {
+		height: 299px;
+	}
+
 
 	.code {
 		width: calc(100vw - 150px) !important;
@@ -448,13 +540,18 @@ function onupdate() {
 	.item-list {
 		scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
 		height: 250px;
-		width: 255px;
+		width: 280px;
 		overflow-x: hidden;
 		overflow-y: auto;
 		border-radius: 10px;
-		padding-right: 5px;
+		padding-right: 3px;
 		user-select: none;
 	}
+
+	.item-list-fav {
+		height: 300px;
+	}
+
 
 	.grid5 {
 		display: grid;
@@ -489,6 +586,8 @@ function onupdate() {
 	.image-cropper {
 		overflow: hidden;
 		border-radius: 10px;
+		margin-top: -33px;
+		margin-bottom: 5px;
 	}
 
 	img {
@@ -501,7 +600,6 @@ function onupdate() {
 	.hover:hover {
 		cursor: pointer;
 	}
-
 
 	@media (max-width: 1200px) {
 		.canvasContainer {
