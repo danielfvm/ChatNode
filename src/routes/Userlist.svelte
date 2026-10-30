@@ -1,82 +1,143 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
 
-	export let profiles;
+	export let profiles = [];
 
 	const dispatch = createEventDispatcher();
 </script>
 
-<div class="list">
-	{#each profiles as profile}
-		<div class="profile" on:click={() => dispatch('profile', profile)}>
-			<div class="name">{profile.name}</div>
-			<div class="image-cropper">
-				<img
-					draggable="false"
-					oncontextmenu="return false;"
-					src={profile.picture}
-					alt="Profile picture"
-				/>
-			</div>
-		</div>
-	{/each}
-</div>
+<aside class="members">
+	<h2>Members <span>{profiles.length}</span></h2>
+	<div class="member-list">
+		{#each profiles as member (member.id)}
+			<button class="member" on:click={() => dispatch('profile', member.profile)}>
+				<span class="avatar">
+					<img src={member.profile.picture} alt="" />
+					<span class="status"></span>
+				</span>
+				<span class="member-name">
+					<strong>{member.profile.name}</strong>
+					<small>{member.profile.pronouns || 'Online'}</small>
+				</span>
+			</button>
+		{/each}
+	</div>
+</aside>
 
 <style>
-	.list {
-		position: absolute;
-		right: 0;
-		top: 0;
+	.members {
+		flex: 0 0 224px;
+		width: 224px;
 		height: 100%;
-		z-index: 2;
+		overflow-y: auto;
+		padding: 24px 12px;
+		background: #e8e9dc;
+		color: #667568;
 	}
 
-	.image-cropper {
-		width: 40px;
-		height: 40px;
-		overflow: hidden;
+	h2 {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin: 0 8px 14px;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	h2 span {
+		display: grid;
+		min-width: 20px;
+		height: 20px;
+		place-items: center;
+		border-radius: 10px;
+		background: #d5dfcc;
+		color: #244b39;
+		font-size: 10px;
+		letter-spacing: 0;
+	}
+
+	.member-list {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+	}
+
+	.member {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		gap: 10px;
+		padding: 7px;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: #667568;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.member:hover {
+		background: #dfe5d6;
+		color: #203c2e;
+	}
+
+	.avatar {
+		position: relative;
+		display: block;
+		width: 34px;
+		height: 34px;
+		flex: 0 0 34px;
 		border-radius: 50%;
-		user-select: none;
+		background: #d5dfcc;
 	}
 
-	img {
-		display: inline;
-		margin: 0 auto;
+	.avatar img {
+		width: 100%;
 		height: 100%;
-		width: auto;
+		border-radius: inherit;
+		object-fit: cover;
 	}
 
-	.name {
-		font-weight: bolder;
-		float: left;
-		line-height: 40px;
-		font-size: 18px;
-		padding-left: 10px;
-		margin: 0 12px 0 12px;
+	.status {
+		position: absolute;
+		right: -1px;
+		bottom: -1px;
+		width: 10px;
+		height: 10px;
+		border: 2px solid #e8e9dc;
+		border-radius: 50%;
+		background: #4a8a54;
 	}
 
-	.profile {
-		background: rgba(0, 0, 0, 0.25);
-		border-radius: 40px;
-		height: 40px;
-		box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.25);
-		color: lightgray;
-		width: fit-content;
-		white-space: nowrap;
+	.member-name {
+		display: block;
+		min-width: 0;
+	}
+
+	.member-name strong,
+	.member-name small {
+		display: block;
 		overflow: hidden;
-
-		margin-top: 4px;
-		margin-right: 4px;
-		margin-left: auto;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
-	.profile:hover {
-		cursor: pointer;
-		background: rgba(0, 0, 0, 0.5);
+	.member-name strong {
+		color: #203c2e;
+		font-size: 13px;
+		font-weight: 500;
 	}
 
-	.hover:hover {
-		cursor: pointer;
-		color: #00a5ff !important;
+	.member-name small {
+		margin-top: 3px;
+		font-size: 11px;
+	}
+
+	@media (max-width: 1050px) {
+		.members {
+			display: none;
+		}
 	}
 </style>

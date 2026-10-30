@@ -3,7 +3,7 @@
 	import { fly, fade } from 'svelte/transition';
 	import { createEventDispatcher } from 'svelte';
 	import { createWorker } from './Script.js';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 
 	export let visible = false;
 
@@ -15,19 +15,19 @@
 	let background;
 	let codeNode;
 
-	let files;
 	let gifs = [];
 	let timeout;
-	let tempPicture;
-	let next = '0';
-	let scrolled = false;
+	let next = '';
+	let gifError = '';
+	let gifLoading = false;
+	let gifRequest = 0;
 	let hoverText = null;
 	let editor = null;
 	let textNode = null;
 	let clipboardNode = null;
 	let canvasContainer = null;
 	let worker;
-	let saves = getSaves();
+	let saves = [];
 
 
 	export let previewCode = `
@@ -46,12 +46,12 @@ function onupdate() {
 	ctx.fillRect(100, 100, 200, 200);
 }`;
 
-	fetch('https://g.tenor.com/v1/trending?key=LIVDSRZULELA&limit=8')
-		.then((res) => res.json())
-		.then((data) => {
-			gifs = data.results;
-			next = data.next;
-		});
+	const tenorApiKey = import.meta.env.VITE_TENOR_API_KEY;
+
+	onMount(() => {
+		saves = getSaves();
+		loadGifs(true);
+	});
 
 	export function changeMenu(index) {
 		entries.forEach((entry) => entry.classList.remove('selected'));
@@ -63,10 +63,11 @@ function onupdate() {
 
 		if (index == 1) {
 			items[1].children[0].scrollTop = 0;
+			loadGifs(true);
 		}
 
 		if (index == 2) {
-			document.getElementById('file-to-upload').click();
+			document.getElementById('chatmenu-file-upload').click();
 		}
 
 		if (index == 3) {
@@ -117,28 +118,73 @@ function onupdate() {
 		previewCode = program;
 	}
 
-	function searchGifs() {
-		if (timeout) clearTimeout(timeout);
-		timeout = setTimeout(() => {
-			fetch(
-				`https://g.tenor.com/v1/search?q=${encodeURI(search)}&key=LIVDSRZULELA&limit=8&pos=${next}`
-			)
-				.then((res) => res.json())
-				.then((data) => {
-					gifs = [...gifs, ...data.results];
-					next = data.next;
-				});
-		}, 500);
+	async function loadGifs(reset = false) {
+		if (!tenorApiKey) {
+			gifError = 'GIF search needs a Tenor API key. Set VITE_TENOR_API_KEY in your .env file.';
+			gifs = [];
+			return;
+		}
+		if (!reset && (gifLoading || !next)) return;
+
+		const request = ++gifRequest;
+		gifLoading = true;
+		gifError = '';
+
+		try {
+			const endpoint = search.trim()
+				? 'https://tenor.googleapis.com/v2/search'
+				: 'https://tenor.googleapis.com/v2/featured';
+			const params = new URLSearchParams({
+				key: tenorApiKey,
+				client_key: 'chatnode',
+				limit: '12',
+				media_filter: 'gif,tinygif',
+				contentfilter: 'medium'
+			});
+			if (search.trim()) params.set('q', search.trim());
+			if (!reset && next) params.set('pos', next);
+
+			const response = await fetch(`${endpoint}?${params}`);
+			if (!response.ok) throw new Error(`Tenor returned HTTP ${response.status}`);
+			const data = await response.json();
+			if (request !== gifRequest) return;
+
+			const results = Array.isArray(data.results) ? data.results : [];
+			gifs = reset ? results : [...gifs, ...results];
+			next = data.next || '';
+		} catch (error) {
+			if (request === gifRequest) {
+				gifError = `Could not load GIFs. ${error.message}`;
+				console.error('GIF search failed:', error);
+			}
+		} finally {
+			if (request === gifRequest) gifLoading = false;
+		}
 	}
 
-	function loadOnScroll(e) {
-		const scroll = e.scrollTop > e.scrollTopMax - e.clientHeight * 2;
+	function searchGifs() {
+		if (timeout) clearTimeout(timeout);
+		gifRequest++;
+		gifLoading = false;
+		next = '';
+		gifs = [];
+		if (items[1]) items[1].children[0].scrollTop = 0;
+		timeout = setTimeout(() => loadGifs(true), 350);
+	}
 
-		if (scrolled != scroll) {
-			searchGifs();
-		}
+	function loadOnScroll(event) {
+		if (event.scrollTop + event.clientHeight >= event.scrollHeight - 120) loadGifs();
+	}
 
-		scrolled = scroll;
+	function gifUrl(result, format) {
+		return result.media_formats?.[format]?.url || result.media_formats?.gif?.url || '';
+	}
+
+	function handleUpload(event) {
+		const files = Array.from(event.currentTarget.files || []);
+		if (files.length) dispatch('files', files);
+		event.currentTarget.value = '';
+		dispatch('close');
 	}
 
 	function close(e) {
@@ -161,41 +207,6 @@ function onupdate() {
 		clipboardNode.classList.add('bi-copy');
 		clipboardNode.classList.remove('bi-check-lg');
 		clipboardNode.classList.remove('bi-x-lg');
-	}
-
-	$: if (files && files.length > 0) {
-		const FR = new FileReader();
-
-		FR.addEventListener('load', (evt) => {
-			const img = new Image();
-			img.src = evt.target.result;
-			img.onload = () => {
-				const canvas = document.createElement('canvas');
-				const max = Math.max(img.width, img.height);
-				const size = 500;
-
-				if (max > size) {
-					if (img.width > img.height) {
-						img.height = (size / img.width) * img.height;
-						img.width = size;
-					} else {
-						img.width = (size / img.height) * img.width;
-						img.height = size;
-					}
-				}
-
-				canvas.width = img.width;
-				canvas.height = img.height;
-
-				const ctx = canvas.getContext('2d');
-				ctx.drawImage(img, 0, 0, img.width, img.height);
-
-				tempPicture = canvas.toDataURL();
-				dispatch('gif', tempPicture);
-			};
-		});
-		FR.readAsDataURL(files[0]);
-		files = [];
 	}
 
 	onDestroy(() => {
@@ -230,39 +241,51 @@ function onupdate() {
 	}
 
 	function getSaves() {
-		return JSON.parse(localStorage.getItem('saves')) || [];
+		if (typeof localStorage === 'undefined') return [];
+		try {
+			const saved = JSON.parse(localStorage.getItem('saves') || '[]');
+			return Array.isArray(saved) ? saved : [];
+		} catch {
+			return [];
+		}
 	}
 </script>
 
 {#if visible}
 	<div class="menuwindow" transition:fly={{ y: 20 }}>
 		<div class="menu shadow">
-			<i
+			<button
+				type="button"
 				bind:this={entries[0]}
 				on:click={() => changeMenu(0)}
+				aria-label="Emoji"
 				class="entry bi-emoji-smile-fill selected"
-			/>
-			<i bind:this={entries[1]} on:click={() => changeMenu(1)} class="entry bi bi-filetype-gif" />
-			<i bind:this={entries[2]} on:click={() => changeMenu(2)} class="entry bi bi-card-image" />
-			<i
+			></button>
+			<button type="button" bind:this={entries[1]} on:click={() => changeMenu(1)} aria-label="GIFs" class="entry bi bi-filetype-gif"></button>
+			<button type="button" bind:this={entries[2]} on:click={() => changeMenu(2)} aria-label="Upload files" class="entry bi bi-card-image"></button>
+			<button
+				type="button"
 				bind:this={entries[3]}
 				on:click={() => changeMenu(3, previewCode)}
+				aria-label="Code playground"
 				class="entry bi bi-code-slash"
-			/>
-			<i bind:this={entries[4]} on:click={() => changeMenu(4)} class="entry bi bi-star" />
+			></button>
+			<button type="button" bind:this={entries[4]} on:click={() => changeMenu(4)} aria-label="Saved GIFs" class="entry bi bi-star"></button>
 		</div>
 
 		<div bind:this={items[0]} class="item shadow" style="display: block">
 			<div class="item-list grid5">
 				{#each emojis.filter((x) => !search || x[1].includes(search)) as emoji}
-					<div
+					<button
+						type="button"
 						on:click={() => dispatch('emoji', emoji[0])}
 						class="hover emoji"
+						aria-label={`Insert ${emoji[1]}`}
 						on:mouseenter={() => (hoverText = emoji[1])}
 						on:mouseleave={() => (hoverText = null)}
 					>
 						{emoji[0]}
-					</div>
+					</button>
 				{/each}
 			</div>
 			<input
@@ -274,127 +297,168 @@ function onupdate() {
 		</div>
 
 		<div bind:this={items[1]} class="item shadow" style="display: none">
-			<div class="item-list" on:scroll={() => loadOnScroll(items[1].children[0])}>
-				{#each gifs as gif}
-					<div class="item-star">
-						<i class="bi bi-{isSave(gif.media[0].gif.url) ? 'star-fill' : 'star'}" on:click={() => save(gif.media[0].gif.url)} />
-					</div>
-					<div class="image-cropper">
-						<img
-							src={gif.media[0].gif.preview}
-							alt={gif.content_description}
-							class="hover"
-							draggable="false"
-							oncontextmenu="return false;"
-							on:click={(x) => dispatch('gif', x.target.src)}
-							on:mouseenter={(x) => {
-								x.target.src = gif.media[0].gif.url;
-								hoverText = gif.content_description.replace('GIF', '');
+			<div class="item-list" on:scroll={(event) => loadOnScroll(event.currentTarget)}>
+				{#each gifs as gif (gif.id)}
+					<div class="gif-card">
+						<button
+							class="gif-save"
+							aria-label={isSave(gifUrl(gif, 'gif')) ? 'Remove saved GIF' : 'Save GIF'}
+							on:click={() => save(gifUrl(gif, 'gif'))}
+						>
+							<i class="bi bi-{isSave(gifUrl(gif, 'gif')) ? 'star-fill' : 'star'}" aria-hidden="true"></i>
+						</button>
+						<button
+							class="gif-picker-button"
+							on:click={() => dispatch('gif', gifUrl(gif, 'gif'))}
+							on:mouseenter={() => {
+								hoverText = gif.content_description?.replace('GIF', '') || '';
 							}}
-							on:mouseleave={(x) => {
-								x.target.src = gif.media[0].gif.preview;
-								hoverText = null;
-							}}
-						/>
+							on:mouseleave={() => (hoverText = null)}
+						>
+							<img
+								src={gifUrl(gif, 'tinygif')}
+								alt={gif.content_description || 'GIF'}
+								draggable="false"
+							/>
+						</button>
 					</div>
 				{/each}
+				{#if gifLoading}
+					<p class="gif-status">Loading GIFs…</p>
+				{:else if gifError}
+					<p class="gif-status error">{gifError}</p>
+				{:else if !gifs.length}
+					<p class="gif-status">No GIFs found.</p>
+				{/if}
 			</div>
 			<input
 				bind:value={search}
-				on:input={() => {
-					items[1].children[0].scrollTop = 0;
-					gifs = [];
-					next = '0';
-					searchGifs();
-				}}
+				on:input={searchGifs}
 				class="item-search"
 				type="text"
 				placeholder={hoverText || 'Search gifs'}
 			/>
+			<div class="tenor-credit">GIFs by Tenor</div>
 		</div>
 
 		<div
 			bind:this={items[2]}
-			on:click={() => document.getElementById('file-to-upload').click()}
 			class="item shadow"
 			style="display: none"
 		>
-			<input class="hidden" id="file-to-upload" type="file" accept=".png,.jpg,.gif" bind:files />
-			<img class="preview" src={tempPicture} alt="Preview" />
+			<label class="upload-prompt" for="chatmenu-file-upload">
+				<i class="bi bi-cloud-arrow-up-fill" aria-hidden="true"></i>
+				<span>Choose files to attach</span>
+			</label>
+			<input
+				class="visually-hidden"
+				id="chatmenu-file-upload"
+				type="file"
+				multiple
+				hidden
+				aria-hidden="true"
+				tabindex="-1"
+				on:change={handleUpload}
+			/>
 		</div>
 
 		<div bind:this={items[3]} class="item code shadow" style="display: none">
 			<div class="codetext">
-				<textarea bind:this={codeNode} value={previewCode} />
+				<textarea bind:this={codeNode} value={previewCode}></textarea>
 				<div class="codebuttons">
-					<i class="bi bi-arrow-clockwise" on:click={startProgram} />
-					<i class="bi bi-copy" bind:this={clipboardNode} on:click={clipboard} />
-					<i
+					<button type="button" class="bi bi-arrow-clockwise" aria-label="Restart program" on:click={startProgram}></button>
+					<button type="button" class="bi bi-copy" bind:this={clipboardNode} aria-label="Copy code" on:click={clipboard}></button>
+					<button
+						type="button"
 						class="bi bi-share-fill"
+						aria-label="Share code"
 						on:click={() => dispatch('gif', '```' + previewCode + '```')}
-					/>
-					<i
+					></button>
+					<button
+						type="button"
 						class="bi bi-send-fill"
+						aria-label="Send runnable code"
 						on:click={() => dispatch('gif', '```prog ' + previewCode + '```')}
-					/>
+					></button>
 				</div>
-				<div class="canvasContainer" bind:this={canvasContainer} />
-				<p bind:this={textNode} />
+				<div class="canvasContainer" bind:this={canvasContainer}></div>
+				<p bind:this={textNode}></p>
 			</div>
 		</div>
 
 		<div bind:this={items[4]} class="item item-fav shadow" style="display: none">
 			<div class="item-list item-list-fav ">
 				{#each saves as gif}
-					<div class="item-star">
-						<i class="bi bi-{isSave(gif) ? 'star-fill' : 'star'}" on:click={() => save(gif)} />
-					</div>
-					<div class="image-cropper">
-						<img
-							src={gif}
-							class="hover"
-							draggable="false"
-							oncontextmenu="return false;"
-							on:click={(x) => dispatch('gif', x.target.src)}
-						/>
+					<div class="gif-card">
+						<button
+							class="gif-save"
+							aria-label="Remove saved GIF"
+							on:click={() => save(gif)}
+						>
+							<i class="bi bi-{isSave(gif) ? 'star-fill' : 'star'}" aria-hidden="true"></i>
+						</button>
+						<button class="gif-picker-button" on:click={() => dispatch('gif', gif)}>
+							<img src={gif} alt="Saved GIF" draggable="false" />
+						</button>
 					</div>
 				{/each}
 			</div>
 		</div>
 	</div>
-	<div
+	<button
 		class="background"
 		bind:this={background}
+		aria-label="Close picker"
 		transition:fade={{ duration: 200 }}
 		on:click={close}
-	/>
+	></button>
 {/if}
 
 <style>
 
-	.item-list .item-star {
+	.gif-card {
 		position: relative;
-		padding: 3px;
-		line-height: 25px;
+		min-width: 0;
+		overflow: hidden;
+		border-radius: 6px;
+		background: #dce3d3;
 	}
 
-	.item-list .item-star i {
-		color: #ddd;
-		padding: 4px;
-		padding-left: 5px;
-		padding-right: 5px;
-		background: rgba(0, 0, 0, 0.1);
-		border-radius: 10px;
-	}
-
-	.item-list .item-star .bi-star-fill {
-		color: white;
-	}
-
-	.item-list .item-star i:hover {
-		color: whtie;
-		background: rgba(0, 0, 0, 0.3);
+	.gif-save {
+		position: absolute;
+		top: 5px;
+		right: 5px;
+		z-index: 1;
+		display: grid;
+		width: 25px;
+		height: 25px;
+		place-items: center;
+		border: 0;
+		border-radius: 5px;
+		background: #193b2dcc;
+		color: #fbfaf2;
 		cursor: pointer;
+	}
+
+	.gif-save:hover {
+		background: #315b43;
+	}
+
+	.gif-picker-button {
+		display: block;
+		width: 100%;
+		height: 110px;
+		padding: 0;
+		overflow: hidden;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	.gif-picker-button img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.codetext p {
@@ -415,17 +479,20 @@ function onupdate() {
 		margin-right: 10px;
 	}
 
-	.codebuttons i {
+	.codebuttons button {
+		border: 0;
 		padding: 10px;
-		background: rgba(0, 0, 0, 0.1);
-		border-radius: 10px;
+		background: #e8e9dc;
+		border-radius: 6px;
+		color: #203c2e;
+		cursor: pointer;
 	}
 
-	.codebuttons i:hover {
+	.codebuttons button:hover {
 		background: rgba(0, 0, 0, 0.2);
 	}
 
-	.codebuttons i:active {
+	.codebuttons button:active {
 		background: rgba(0, 0, 0, 0.3);
 	}
 
@@ -436,44 +503,30 @@ function onupdate() {
 		left: 0;
 		bottom: 0;
 		right: 0;
+		border: 0;
+		padding: 0;
 		z-index: 0;
+		cursor: default;
 	}
 
 	.menuwindow {
-		width: max-content;
-		position: absolute;
-		margin-left: 10px;
-		transform: translateY(-100px);
-		bottom: 0;
+		width: 340px;
+		position: fixed;
+		left: 275px;
+		bottom: 92px;
 		z-index: 3;
 	}
 
-	.preview {
-		width: 100%;
-	}
-
-	.hidden {
-		display: none;
-	}
-
-	.upload {
-		text-align: center;
-		margin-top: 30px;
-		font: 22px Fira Mono, bolder;
-	}
-
 	.menu {
-		background: #ebe1d8;
+		background: #214533;
 		height: 50px;
-		width: 280px;
+		width: 100%;
 		overflow: hidden;
-		border-radius: 10px;
-		margin-top: 10px;
-		margin-left: 56px;
-		margin-bottom: -20px;
+		border-radius: 8px 8px 0 0;
+		margin: 0;
 
-		font-size: 25px;
-		color: gray;
+		font-size: 21px;
+		color: #b7c8b3;
 
 		display: grid;
 		grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
@@ -481,44 +534,85 @@ function onupdate() {
 	}
 
 	.entry {
+		display: grid;
 		align-items: center;
 		justify-items: center;
 		text-align: center;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		font: inherit;
 		border-radius: 10px;
 		transition: padding-top 0.2s;
+		cursor: pointer;
 	}
 
 	.entry:hover {
-		color: black;
+		color: #203c2e;
 	}
 
 	.selected {
-		background: #f5ebe2;
-		color: black;
+		background: #3b6549;
+		color: #dce8d1;
 		padding-top: 5px;
-		box-shadow: 0px 10px 10px rgba(0, 0, 0, 0.15);
 	}
 
 	.item-search {
 		outline: none;
-		border: none;
-		background: #ebe1d8;
-		border-radius: 10px;
-		padding: 5px;
-		width: 260px;
-		margin-top: 9px;
-		height: 30px;
-		padding-left: 15px;
+		border: 1px solid #627e62;
+		background: #193b2d;
+		border-radius: 6px;
+		padding: 7px 10px;
+		width: calc(100% - 16px);
+		margin: 8px;
+		height: 34px;
+		color: #f3f1e4;
 	}
 
 	.item {
-		background: #f5ebe2;
-		width: 280px;
+		background: #214533;
+		width: 100%;
 		overflow: hidden;
-		border-radius: 10px;
-		margin-left: 56px;
+		border-radius: 0 0 8px 8px;
+		margin-left: 0;
 		padding: 5px;
 		position: relative;
+	}
+
+	.upload-prompt {
+		display: flex;
+		min-height: 120px;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 12px;
+		border: 1px dashed #8ca878;
+		border-radius: 8px;
+		color: #f3f1e4;
+		cursor: pointer;
+	}
+
+	.upload-prompt i {
+		color: #b7cc91;
+		font-size: 30px;
+	}
+
+	.gif-status {
+		grid-column: 1 / -1;
+		margin: 8px;
+		color: #b7c8b3;
+		font-size: 12px;
+	}
+
+	.gif-status.error {
+		color: #f0b4a8;
+	}
+
+	.tenor-credit {
+		padding: 0 10px 8px;
+		color: #b7c8b3;
+		font-size: 10px;
+		text-align: right;
 	}
 
 	.item-fav {
@@ -538,12 +632,15 @@ function onupdate() {
 	}
 
 	.item-list {
-		scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+		scrollbar-color: #567354 transparent;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		align-content: start;
 		height: 250px;
-		width: 280px;
+		width: 100%;
 		overflow-x: hidden;
 		overflow-y: auto;
-		border-radius: 10px;
+		border-radius: 0;
 		padding-right: 3px;
 		user-select: none;
 	}
@@ -558,13 +655,9 @@ function onupdate() {
 		grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
 	}
 
-	.grid2 {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		grid-gap: 5px;
-	}
-
 	.emoji {
+		border: 0;
+		background: transparent;
 		width: 50px;
 		height: 50px;
 		text-align: center;
@@ -575,19 +668,11 @@ function onupdate() {
 	}
 
 	.emoji:hover {
-		cursor: pointer;
 		background: rgba(0, 0, 0, 0.1);
 	}
 
 	.shadow {
 		box-shadow: 0px 10px 10px rgba(0, 0, 0, 0.25);
-	}
-
-	.image-cropper {
-		overflow: hidden;
-		border-radius: 10px;
-		margin-top: -33px;
-		margin-bottom: 5px;
 	}
 
 	img {
@@ -608,20 +693,14 @@ function onupdate() {
 	}
 
 	@media (max-width: 500px) {
-		.menu {
-			margin-left: 0px;
-		}
-
-		.item {
-			margin-left: 0px;
-		}
-
 		.code {
 			width: calc(100% - 24px) !important;
 		}
 
 		.menuwindow {
-			width: 100%;
+			left: 78px;
+			right: 8px;
+			width: auto;
 		}
 	}
 </style>

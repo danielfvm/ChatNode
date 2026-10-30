@@ -1,17 +1,19 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { createEventDispatcher } from 'svelte';
-	import { scale } from 'svelte/transition';
 	import Chatmenu from './Chatmenu.svelte';
 
 	export let editing;
-	export let profile;
-	export let changeMenu;
 
 	let message;
 	let savedRange;
 	let showMenu = false;
 	let chatmenuNode;
+	let fileInput;
+	let selectedFiles = [];
+	let sending = false;
+	const maxUploadBytes = 5 * 1024 * 1024;
+	const maxFiles = 10;
 
 	const dispatch = createEventDispatcher();
 
@@ -64,97 +66,184 @@
 	}
 
 	function save() {
-		savedRange = window.getSelection().getRangeAt(0);
+		const selection = window.getSelection();
+		if (selection && selection.rangeCount > 0) savedRange = selection.getRangeAt(0);
 	}
 
-	function send() {
-		if (message.innerText.trim().length <= 0) return;
+	function readAsDataUrl(file) {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(reader.result);
+			reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+			reader.readAsDataURL(file);
+		});
+	}
 
-		dispatch('message', { message: message.innerText });
-		message.innerText = '';
+	async function send() {
+		if (sending) return;
+		const text = message?.innerText.trim() || '';
+		if (!text && selectedFiles.length === 0) return;
 
-		showMenu = false;
+		sending = true;
+		try {
+			const attachments = await Promise.all(
+				selectedFiles.map(async (file) => ({
+					name: file.name,
+					type: file.type || 'application/octet-stream',
+					size: file.size,
+					data: await readAsDataUrl(file)
+				}))
+			);
+
+			dispatch('message', { message: text, attachments });
+			message.innerText = '';
+			selectedFiles = [];
+			showMenu = false;
+		} catch (error) {
+			dispatch('error', error.message);
+		} finally {
+			sending = false;
+		}
+	}
+
+	function addFiles(files) {
+		const incoming = Array.from(files || []);
+		if (!incoming.length) return;
+
+		if (selectedFiles.length + incoming.length > maxFiles) {
+			dispatch('error', `You can attach up to ${maxFiles} files to a message.`);
+			return;
+		}
+
+		const totalBytes = [...selectedFiles, ...incoming].reduce((total, file) => total + file.size, 0);
+		if (totalBytes > maxUploadBytes) {
+			dispatch('error', 'Attachments must total 5 MB or less per message.');
+			return;
+		}
+
+		selectedFiles = [...selectedFiles, ...incoming];
+	}
+
+	function handleFileInput(event) {
+		addFiles(event.currentTarget.files);
+		event.currentTarget.value = '';
+	}
+
+	function removeFile(index) {
+		selectedFiles = selectedFiles.filter((_file, fileIndex) => fileIndex !== index);
+	}
+
+	function onDrop(event) {
+		event.preventDefault();
+		addFiles(event.dataTransfer.files);
+	}
+
+	function onKeydown(event) {
+		if (event.target !== message || event.ctrlKey || event.altKey || !editing) return;
+
+		if (event.key === 'Escape') showMenu = false;
+		if (event.key === 'Enter' && !event.shiftKey) {
+			event.preventDefault();
+			send();
+		}
 	}
 
 	onMount(() => {
 		focus();
-		document.addEventListener('keydown', (e) => {
-			if (e.ctrlKey || e.altKey || !editing) return;
-
-			//focus();
-
-			const textLen = message ? message.innerText.trim().length : 0;
-
-			if (e.key == 'Escape') {
-				showMenu = false;
-			}
-
-			// Delayed in order to see the innerText length after editing (especially with marked text)
-			setTimeout(() => {
-				if (
-					message &&
-					message.innerText[0] == '\n' &&
-					message.innerText.length <= 1 &&
-					(e.key == 'Delete' || e.key == 'Backspace')
-				) {
-					message.innerHTML = '';
-				}
-			}, 4);
-
-			if (!e.shiftKey && e.key == 'Enter' && textLen > 0) {
-				send();
-				e.preventDefault();
-			} else if (e.key == 'Enter' && textLen == 0) {
-				e.preventDefault();
-			}
-		});
+		document.addEventListener('keydown', onKeydown);
 	});
+
+	onDestroy(() => document.removeEventListener('keydown', onKeydown));
 
 	function toggleMenu() {
 		showMenu = !showMenu;
 	}
 
-	function openProfile() {
-		dispatch('profile', profile);
-	}
 </script>
 
-<div class="align">
-	<div in:scale={{ duration: 200 }} class="profile-pic image-cropper hover" on:click={openProfile}>
-		<img
-			draggable="false"
-			oncontextmenu="return false;"
-			src={profile.picture}
-			alt="Profile picture"
-		/>
-	</div>
+<div class="composer-wrap">
+	<div
+		class="composer"
+		role="group"
+		aria-label="Message composer"
+		on:dragover={(event) => event.preventDefault()}
+		on:drop={onDrop}
+	>
+		{#if selectedFiles.length}
+			<div class="attachment-list">
+				{#each selectedFiles as file, index (file.name + file.lastModified)}
+					<div class="attachment-chip">
+						<i class="bi bi-file-earmark" aria-hidden="true"></i>
+						<span>{file.name}</span>
+						<button aria-label={`Remove ${file.name}`} on:click={() => removeFile(index)}>
+							<i class="bi bi-x" aria-hidden="true"></i>
+						</button>
+					</div>
+				{/each}
+			</div>
+		{/if}
 
-	<div on:click={focus} on:keyup={save} class="chat shadow">
-		<table width="100%">
-			<tr>
-				<td
-					bind:this={message}
-					id="message"
-					type="text"
-					contenteditable={supportsPlainText() ? "plaintext-only" : "true"}
-					placeholder="Type a message"
-				/>
-
-				<td class="send">
-					<i
-						class="{showMenu ? 'open' : ''} dots bi bi-three-dots-vertical"
-						on:click={toggleMenu}
-					/>
-					<i class="bi bi-send-fill" on:click={send} />
-				</td>
-			</tr>
-		</table>
+		<div class="composer-row">
+			<input
+				bind:this={fileInput}
+				class="visually-hidden"
+				hidden
+				aria-hidden="true"
+				tabindex="-1"
+				type="file"
+				multiple
+				on:change={handleFileInput}
+			/>
+			<button
+				class="composer-button attach-button"
+				aria-label="Attach files"
+				title="Attach files"
+				on:click={() => fileInput.click()}
+			>
+				<i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
+			</button>
+			<div
+				bind:this={message}
+				id="message"
+				class="message-input"
+				contenteditable={supportsPlainText() ? 'plaintext-only' : 'true'}
+				role="textbox"
+				tabindex="0"
+				aria-label="Message"
+				aria-multiline="true"
+				placeholder="Message this conversation"
+				on:keyup={save}
+			></div>
+			<button
+				class:open={showMenu}
+				class="composer-button"
+				aria-label="Open GIF and emoji picker"
+				title="GIFs and emoji"
+				on:click={toggleMenu}
+			>
+				<i class="bi bi-emoji-smile" aria-hidden="true"></i>
+			</button>
+			<button
+				class="composer-button send-button"
+				aria-label="Send message"
+				title="Send message"
+				disabled={sending}
+				on:click={send}
+			>
+				<i class="bi bi-send-fill" aria-hidden="true"></i>
+			</button>
+		</div>
+		<p class="composer-hint">Enter to send · Shift + Enter for a new line · Drop files to attach</p>
 	</div>
 </div>
 
 <Chatmenu
 	bind:this={chatmenuNode}
 	bind:visible={showMenu}
+	on:files={(event) => {
+		addFiles(event.detail);
+		showMenu = false;
+	}}
 	on:emoji={(x) => (message.innerText += x.detail)}
 	on:gif={(x) => {
 		message.innerText += x.detail;
@@ -164,141 +253,137 @@
 />
 
 <style>
-	.open {
-		color: black;
+	.composer-wrap {
+		position: relative;
+		z-index: 1;
+		flex: 0 0 auto;
+		padding: 0 24px 18px;
+		background: var(--paper);
 	}
 
-	.dots {
-		transition: color 0.1s;
-	}
-
-	.dots:hover {
-		color: darkgray;
-	}
-
-	.icon {
-		transition: color 0.1s;
-	}
-
-	.icon:hover {
-		cursor: pointer;
-		color: black;
-	}
-
-	.send {
-		vertical-align: top;
-		float: right;
-		color: gray;
-		margin-right: -20px;
-		margin-left: 10px;
-		cursor: pointer;
-		width: 60px;
-		height: 20px;
-	}
-
-	[contenteditable='true']:empty + i:hover {
-		cursor: auto;
-	}
-
-	[contenteditable='true']:empty + td {
-		color: lightgray;
-	}
-
-	[contenteditable='true']:empty:before {
-		content: attr(placeholder);
-		color: lightgray;
-	}
-
-	[contenteditable='true'] br {
-		display: none;
-	}
-
-	#message {
-		overflow: hidden;
-		word-break: break-all;
-		overflow-wrap: break-word;
-		background: none;
-		border: none;
-		outline: none;
-		color: gray;
-	}
-
-	.align {
-		display: flex;
-		flex: 1;
-		width: 100%;
-		flex-direction: row;
-		position: fixed;
-		bottom: 0;
-		margin-bottom: 10px;
-
-		z-index: 2;
-		max-height: 50%;
-	}
-
-	.chat {
-		min-width: 250px;
-		max-width: calc(100vw - 110px);
-
-		background: #faf0e6;
-		color: #afaf70;
-		padding: 20px;
-		margin: 5px;
-		font-size: 20px;
-		border-radius: 10px;
-
-		white-space: pre-line;
-		overflow-y: auto;
-	}
-
-	.name {
-		font-weight: bolder;
-		margin-bottom: -15px;
-		text-decoration: underline;
-	}
-
-	.name:hover {
-		cursor: pointer;
-	}
-
-	.shadow {
-		box-shadow: 0px 10px 10px rgba(0, 0, 0, 0.25);
-	}
-
-	.image-cropper {
-		width: 50px;
-		height: 50px;
-		overflow: hidden;
-		border-radius: 50%;
-	}
-
-	img {
-		display: inline;
+	.composer {
+		max-width: 1020px;
 		margin: 0 auto;
-		height: 100%;
-		width: auto;
+		padding: 8px 12px 0;
+		border-radius: 8px;
+		border: 1px solid #d4dacb;
+		background: #e8e9dc;
+		box-shadow: 0 4px 14px #41533c12;
 	}
 
-	p {
-		color: white;
-		font-weight: bolder;
+	.composer-row {
+		display: flex;
+		align-items: flex-end;
+		gap: 8px;
+		min-height: 42px;
 	}
 
-	.hover:hover {
+	.message-input {
+		flex: 1;
+		min-width: 0;
+		max-height: 180px;
+		overflow-y: auto;
+		padding: 10px 4px;
+		outline: none;
+		color: var(--ink);
+		font-size: 15px;
+		line-height: 1.4;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.message-input:empty::before {
+		content: attr(placeholder);
+		color: #839080;
+		pointer-events: none;
+	}
+
+	.composer-button {
+		display: grid;
+		width: 34px;
+		height: 36px;
+		flex: 0 0 34px;
+		place-items: center;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: #667568;
+		cursor: pointer;
+		font-size: 19px;
+	}
+
+	.composer-button:hover,
+	.composer-button.open {
+		color: #203c2e;
+		background: #d5dfcc;
+	}
+
+	.attach-button {
+		color: #667568;
+		font-size: 22px;
+	}
+
+	.send-button {
+		color: #527a4d;
+	}
+
+	.send-button:hover {
+		background: #527a4d;
+	}
+
+	.send-button:disabled {
+		cursor: wait;
+		opacity: 0.5;
+	}
+
+	.composer-hint {
+		margin: 0;
+		padding: 4px 2px 6px;
+		color: #7d897b;
+		font-size: 10px;
+	}
+
+	.attachment-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		padding: 5px 0 8px;
+	}
+
+	.attachment-chip {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		max-width: 240px;
+		padding: 5px 8px;
+		border: 1px solid #cbd5c3;
+		border-radius: 6px;
+		background: #f6f5eb;
+		color: #203c2e;
+		font-size: 12px;
+	}
+
+	.attachment-chip span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.attachment-chip button {
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: #667568;
 		cursor: pointer;
 	}
 
-	.profile-pic {
-		margin-left: 10px;
-	}
-
-	@media (max-width: 500px) {
-		.profile-pic {
-			display: none;
+	@media (max-width: 720px) {
+		.composer-wrap {
+			padding: 0 10px 12px;
 		}
 
-		.chat {
-			min-width: calc(100vw - 50px);
+		.composer-hint {
+			display: none;
 		}
 	}
 </style>

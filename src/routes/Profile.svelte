@@ -86,70 +86,76 @@
 <Popup on:close>
 	<div class="popup">
 		<table>
-			<tr>
-				<td>
-					<div class="image-cropper">
-						<img
-							draggable="false"
-							oncontextmenu="return false;"
-							src={tempPicture}
-							alt="Profile picture"
-						/>
-						{#if edit}
-							<div
-								class="upload"
-								on:click={() => document.getElementById('file-to-upload').click()}
-							>
-								<div class="uploadcontent">
-									<i class="bi bi-upload" />
-								</div>
-							</div>
-							<input
-								class="hidden"
-								id="file-to-upload"
-								type="file"
-								accept=".png,.jpg,.gif"
-								bind:files
+			<tbody>
+				<tr>
+					<td>
+						<div class="image-cropper">
+							<img
+								draggable="false"
+								on:contextmenu={(event) => event.preventDefault()}
+								src={tempPicture}
+								alt={`${tempName}'s avatar`}
 							/>
-						{/if}
-					</div>
-				</td>
+							{#if edit}
+								<button
+									type="button"
+									class="upload"
+									aria-label="Upload a new profile picture"
+									on:click={() => document.getElementById('file-to-upload').click()}
+								>
+									<div class="uploadcontent">
+										<i class="bi bi-upload"></i>
+									</div>
+								</button>
+								<input
+									class="hidden"
+									id="file-to-upload"
+									type="file"
+									accept=".png,.jpg,.gif"
+									bind:files
+								/>
+							{/if}
+						</div>
+					</td>
 
-				<td class="text">
-					<input
-						type="text"
-						class="name {edit ? 'edit' : ''}"
-						spellcheck="false"
-						readonly={!edit}
-						maxlength="20"
-						bind:value={tempName}
-					/>
-
-					{#if editable}
-						<i
-							bind:this={nodeEditButton}
-							class="editbutton bi bi-pencil-fill"
-							on:click={clickedEdit}
+					<td class="text">
+						<input
+							type="text"
+							class="name {edit ? 'edit' : ''}"
+							spellcheck="false"
+							readonly={!edit}
+							maxlength="20"
+							bind:value={tempName}
 						/>
-					{/if}
 
-					<input
-						class="pronouns {edit ? 'edit' : ''}"
-						spellcheck="false"
-						readonly={!edit}
-						maxlength="20"
-						bind:value={tempPronouns}
-					/>
-					<textarea
-						class="bio {edit ? 'edit editbio' : ''}"
-						spellcheck="false"
-						readonly={!edit}
-						maxlength="255"
-						rows="4"
-						bind:value={tempBio}
-					/>
-				</td>
-			</tr>
+						{#if editable}
+							<button
+								type="button"
+								bind:this={nodeEditButton}
+								class="editbutton bi bi-pencil-fill"
+								aria-label={edit ? 'Save profile' : 'Edit profile'}
+								on:click={clickedEdit}
+							></button>
+						{/if}
+
+						<input
+							class="pronouns {edit ? 'edit' : ''}"
+							spellcheck="false"
+							readonly={!edit}
+							maxlength="20"
+							bind:value={tempPronouns}
+						/>
+						<textarea
+							class="bio {edit ? 'edit editbio' : ''}"
+							spellcheck="false"
+							readonly={!edit}
+							maxlength="255"
+							rows="4"
+							bind:value={tempBio}
+						></textarea>
+					</td>
+				</tr>
+			</tbody>
 		</table>
 	</div>
 </Popup>
@@ -159,12 +165,12 @@
 		background: none;
 		outline: none;
 		border: none;
-		color: white;
+		color: #203c2e;
 	}
 
 	.popup {
-		width: 900px;
-		height: 250px;
+		width: min(820px, calc(100vw - 80px));
+		min-height: 230px;
 		vertical-align: top;
 	}
 
@@ -175,19 +181,22 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		width: 570px;
+		width: min(500px, calc(100% - 45px));
 		float: left;
 	}
 
 	.editbutton {
+		border: 0;
+		padding: 6px;
+		background: transparent;
 		font-size: 22px;
-		color: rgba(255, 255, 255, 0.2);
+		color: #8b9b84;
 		transition: color 0.1s;
 	}
 
 	.editbutton:hover {
 		cursor: pointer;
-		color: rgba(255, 255, 255, 0.3);
+		color: #527a4d;
 	}
 
 	.text {
@@ -197,15 +206,15 @@
 	}
 
 	.bio {
-		background: rgba(255, 255, 255, 0.1);
+		background: #e8e9dc;
 		border-radius: 10px;
 		padding: 20px;
 		height: 120px;
-		width: 560px;
+		width: min(500px, calc(100% - 40px));
 		overflow: hidden;
 		transition: background 0.1s;
 		outline: none;
-		color: white;
+		color: #203c2e;
 		font-size: 18px;
 		border: none;
 		resize: none;
@@ -213,7 +222,7 @@
 
 	.pronouns {
 		float: left;
-		color: gray;
+		color: #667568;
 		outline: none;
 		white-space: nowrap;
 		overflow: hidden;
@@ -221,13 +230,15 @@
 	}
 
 	.image-cropper {
-		width: 300px;
-		height: 300px;
+		width: 220px;
+		height: 220px;
 		overflow: hidden;
-		border-radius: 10px;
+		border: 3px solid #789a62;
+		border-radius: 50%;
 		user-select: none;
-		margin: -30px;
-		background: #524b66;
+		margin: 0;
+		box-shadow: 0 8px 26px #0005;
+		background: #dce8d1;
 	}
 
 	img {
@@ -238,12 +249,12 @@
 	}
 
 	.editbio:focus {
-		background: rgba(255, 255, 255, 0.2);
+		background: #dce8d1;
 		transition: background 0.1s;
 	}
 
 	.editbio:hover {
-		background: rgba(255, 255, 255, 0.2);
+		background: #dce8d1;
 		transition: background 0.1s;
 	}
 
@@ -255,7 +266,9 @@
 		position: absolute;
 		display: inline;
 		top: 0;
-		border-radius: 10px;
+		border: 0;
+		padding: 0;
+		border-radius: 50%;
 		background: transparent;
 		margin-top: -4px;
 		display: flex;
@@ -268,13 +281,13 @@
 	}
 
 	.upload:hover {
-		background: rgba(0, 0, 0, 0.7);
-		color: white;
+		background: rgba(25, 59, 45, 0.72);
+		color: #fbfaf2;
 	}
 
 	.uploadcontent {
-		height: 300px;
-		width: 300px;
+		height: 220px;
+		width: 220px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -284,5 +297,39 @@
 
 	.uploadcontent:hover {
 		backdrop-filter: blur(3px);
+	}
+
+	@media (max-width: 640px) {
+		.popup {
+			width: calc(100vw - 64px);
+		}
+
+		table,
+		tbody,
+		tr,
+		td {
+			display: block;
+		}
+
+		.image-cropper {
+			width: 120px;
+			height: 120px;
+			margin: 0 auto 18px;
+		}
+
+		.uploadcontent {
+			width: 120px;
+			height: 120px;
+		}
+
+		.text {
+			padding-left: 0;
+			height: auto;
+		}
+
+		.name,
+		.bio {
+			width: 100%;
+		}
 	}
 </style>

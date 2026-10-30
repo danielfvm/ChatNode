@@ -2,6 +2,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { onDestroy } from 'svelte';
 	import { createWorker } from './Script.js';
+	import { renderMarkdown } from './markdown.js';
 
 	export let owner;
 	export let message;
@@ -23,46 +24,6 @@
 		return hours + ':' + minutes;
 	}
 
-	function escapeHtml(text) {
-		var map = {
-			'&': '&amp;',
-			'<': '&lt;',
-			'>': '&gt;',
-			'"': '&quot;',
-			"'": '&#039;'
-		};
-
-		return text.replace(/[&<>"']/g, function (m) {
-			return map[m];
-		});
-	}
-
-	// create a list of text + urls
-	const splitUrlAndCode = /(https?:\/\/[^\s]+)|(\`\`\`[\s\S]+?\`\`\`)/g;
-	let data = message.text
-		.split(splitUrlAndCode)
-		.filter((x) => typeof x !== 'undefined')
-		.map((x) => {
-			// code
-			if (x.match(/(\`\`\`[\s\S]+?\`\`\`)/g))
-				return {
-					html: `<textarea readonly class="messageCodePreview">${escapeHtml(
-						x.substring(3, x.length - 3)
-					).trim()}</textarea>`,
-					text: ''
-				};
-
-			// url
-			if (x.match(/(https?:\/\/[^\s]+)/g))
-				return {
-					html: '<a href="' + escapeHtml(x) + '" target="_blank">' + escapeHtml(x) + '</a>',
-					text: ''
-				};
-
-			// plain text
-			return { html: '', text: escapeHtml(x) };
-		});
-
 	// add embedded code
 	let program = message.program
 		? createWorker(message.program, (state) => (programState = state))
@@ -70,9 +31,7 @@
 
 	// Remove code enclosers
 	onDestroy(() => {
-		data.forEach((x) => {
-			if (x.code) x.code.stop();
-		});
+		if (program) program.stop();
 	});
 
 	function clipboard() {
@@ -135,138 +94,280 @@
 	class="align"
 	style="flex-direction: {owner ? 'row' : 'row-reverse'}"
 	on:mouseenter={resetClipboard}
+	role="group"
+	aria-label={`Message from ${message.profile.name}`}
 >
-	<div
+	<button
 		class="profile-pic image-cropper hover"
 		style="visibility: {showProfile ? 'visible' : 'hidden'}"
-		on:click={dispatch('profile', message.profile)}
+		aria-label={`View ${message.profile.name}'s profile`}
+		on:click={() => dispatch('profile', message.profile)}
 	>
 		<img
 			draggable="false"
-			oncontextmenu="return false;"
+			on:contextmenu={(event) => event.preventDefault()}
 			src={message.profile.picture}
-			alt="Profile picture"
+			alt=""
 		/>
-	</div>
-	<div class="chat shadow">
+	</button>
+	<div class="chat">
 		{#if showProfile}
-			<div class="name hover" on:click={dispatch('profile', message.profile)}>
-				{message.profile.name}
+			<div class="message-heading">
+				<button class="name hover" on:click={() => dispatch('profile', message.profile)}>
+					{message.profile.name}
+				</button>
+				<span class="time">{timeFormat(message.time)}</span>
 			</div>
-			<div class="time">{timeFormat(message.time)}</div>
-			<br />
 		{/if}
-		<div class="text">
-			{#each data as { text, html }}
-				{text}
-				{@html html}
-			{/each}
-		</div>
+		{#if message.text}
+			<div class="text">{@html renderMarkdown(message.text)}</div>
+		{/if}
 		{#each message.gifs as gif}
-			<img class="gif" src={gif} />
+			<img class="gif" src={gif} alt="Shared GIF" loading="lazy" />
 		{/each}
 		{#each message.pngs as png}
-			<img class="gif" src={png} />
+			<img class="gif" src={png} alt="" loading="lazy" />
+		{/each}
+		{#each message.attachments as attachment}
+			{#if ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'].includes(attachment.type)}
+				<a class="attachment-image" href={attachment.data} target="_blank" rel="noopener noreferrer">
+					<img src={attachment.data} alt={attachment.name} loading="lazy" />
+				</a>
+			{:else}
+				<a
+					class="file-attachment"
+					href={attachment.data}
+					download={attachment.name}
+					title={`${attachment.name} (${Math.ceil(attachment.size / 1024)} KB)`}
+				>
+					<i class="bi bi-file-earmark-arrow-down-fill" aria-hidden="true"></i>
+					<span>{attachment.name}</span>
+					<small>{Math.ceil(attachment.size / 1024)} KB</small>
+				</a>
+			{/if}
 		{/each}
 		{#if program}
-			<div oncontextmenu="return false;" class="code">
-				<canvas bind:this={canvasNode} style="display: none" width="400" height="400" />
+			<div on:contextmenu={(event) => event.preventDefault()} class="code" role="group">
+				<canvas bind:this={canvasNode} style="display: none" width="400" height="400"></canvas>
 				<p bind:this={messageNode}>
-					<i on:click={toggleProgram} class="play bi bi-play-fill"> Click to run </i>
+					<button type="button" on:click={toggleProgram} class="play bi bi-play-fill">
+						Click to run
+					</button>
 				</p>
 			</div>
 		{/if}
 	</div>
 
 	<div class="quick-menu">
-		<i bind:this={clipboardNode} class="bi bi-copy" on:click={clipboard} />
+		<button type="button" bind:this={clipboardNode} class="bi bi-copy" aria-label="Copy message" on:click={clipboard}></button>
 
 		{#if owner}
-			<i class="bi bi-pencil" on:click={() => dispatch('edit')} />
+			<button type="button" class="bi bi-pencil" aria-label="Edit message" on:click={() => dispatch('edit')}></button>
 		{/if}
 
 		<!---
-		{#if message.gifs.length > 0 || program}
+		{#if message.gifs.length > 0 || message.attachments.length > 0 || program}
 			<i class="bi bi-star" />
 		{/if}
 		-->
 
 		{#if program}
-			<i class="bi bi-download" on:click={downloadProgram} />
-			<i class="bi bi-{programState ? 'stop' : 'play'}" on:click={toggleProgram} />
+			<button type="button" class="bi bi-download" aria-label="Download program" on:click={downloadProgram}></button>
+			<button
+				type="button"
+				class="bi bi-{programState ? 'stop' : 'play'}"
+				aria-label={programState ? 'Stop program' : 'Run program'}
+				on:click={toggleProgram}
+			></button>
 		{/if}
 	</div>
 </div>
 
 <style>
 	.align .quick-menu {
-		color: transparent;
-	}
-
-	.align:hover .quick-menu {
+		display: flex;
+		gap: 4px;
 		margin-top: 15px;
+		color: #60725e;
 	}
 
-	.align:hover .quick-menu i {
+	.quick-menu button {
+		display: inline-grid;
+		width: 32px;
+		height: 32px;
+		place-items: center;
+		border: 0;
+		border-radius: 8px;
+		background: #e6eadc;
+		color: #49664a;
 		cursor: pointer;
-		background: rgba(0, 0, 0, 0.1);
-		padding: 10px;
-		border-radius: 10px;
-		color: white;
+		transition: background-color 120ms ease, color 120ms ease;
 	}
 
-	.align:hover .quick-menu i:hover {
-		background: rgba(0, 0, 0, 0.4);
+	.quick-menu button:hover {
+		background: #d3dfc8;
+		color: #203c2e;
 	}
 
 	.gif {
-		width: 100%;
-		max-width: 400px;
+		display: block;
+		width: auto;
+		max-width: min(440px, 100%);
 		height: auto;
-		border-radius: 10px;
+		max-height: 480px;
+		border-radius: 8px;
+		margin-top: 10px;
+	}
+
+	.attachment-image img {
+		display: block;
+		width: auto;
+		height: auto;
+		max-width: min(440px, 100%);
+		max-height: 480px;
+		object-fit: contain;
+		border-radius: 8px;
+		margin-top: 10px;
+	}
+
+	.file-attachment {
+		display: inline-flex;
+		align-items: center;
+		gap: 12px;
+		max-width: min(440px, 100%);
+		margin-top: 10px;
+		padding: 12px 14px;
+		border: 1px solid #cbd5c3;
+		border-radius: 8px;
+		background: #f6f5eb;
+		color: #203c2e;
+	}
+
+	.file-attachment i {
+		font-size: 24px;
+		color: #527a4d;
+	}
+
+	.file-attachment span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.file-attachment small {
+		color: #667568;
+		white-space: nowrap;
 	}
 
 	.align {
 		display: flex;
 		flex: 1;
 		width: 100%;
-		transition: background 0.2s;
+		align-items: flex-start;
+		padding: 5px 16px;
+		transition: background 0.15s;
 	}
 
 	.align:hover {
-		background: rgba(0, 0, 0, 0.03);
+		background: #e8e9dc;
 	}
 
 	.chat {
-		max-width: 60%;
-		min-width: 220px;
-		border-radius: 10px;
-
+		flex: 1;
+		max-width: 900px;
+		min-width: 0;
+		border-radius: 8px;
 		overflow: hidden;
-		word-break: break-all;
+		word-break: break-word;
 		overflow-wrap: break-word;
-
-		background: #faf0e6;
-		color: gray;
-		padding: 20px;
-		margin: 5px;
-		font-size: 20px;
-
-		white-space: pre-line;
+		background: transparent;
+		color: #203c2e;
+		padding: 4px 0;
+		margin: 0;
+		font-size: 15px;
+		line-height: 1.45;
 	}
 
-	.name {
-		font-weight: bolder;
-		margin-bottom: -15px;
+	:global(.text p) {
+		margin: 0 0 8px;
+	}
+
+	:global(.text p:last-child) {
+		margin-bottom: 0;
+	}
+
+	:global(.text h1),
+	:global(.text h2),
+	:global(.text h3) {
+		margin: 8px 0;
+		color: #203c2e;
+		font-weight: 650;
+	}
+
+	:global(.text ul),
+	:global(.text ol) {
+		margin: 4px 0;
+		padding-left: 24px;
+	}
+
+	:global(.text blockquote) {
+		margin: 4px 0;
+		padding-left: 10px;
+		border-left: 3px solid #9cad8c;
+		color: #526553;
+	}
+
+	:global(.text pre) {
+		max-width: 100%;
+		margin: 8px 0;
+		padding: 12px;
+		overflow-x: auto;
+		border: 1px solid #d4dacb;
+		border-radius: 6px;
+		background: #e8e9dc;
+		color: #203c2e;
+		font: 13px/1.5 'Fira Mono', monospace;
+		white-space: pre;
+	}
+
+	:global(.text code) {
+		padding: 2px 4px;
+		border-radius: 4px;
+		background: #e8e9dc;
+		color: #527a4d;
+		font: 0.9em 'Fira Mono', monospace;
+	}
+
+	:global(.text pre code) {
+		padding: 0;
+		background: transparent;
+		color: inherit;
+	}
+
+	:global(.text a) {
+		color: #3d704d;
 		text-decoration: underline;
 	}
 
+	.name {
+		border: 0;
+		padding: 0;
+		background: transparent;
+		color: #203c2e;
+		font: inherit;
+		font-weight: 600;
+	}
+
 	.time {
-		font-style: italic;
-		font-size: 12px;
-		color: gray;
-		float: right;
-		line-height: 7px;
+		font-size: 11px;
+		color: #667568;
+	}
+
+	.message-heading {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		margin-bottom: 2px;
 	}
 
 	.hover:hover {
@@ -274,15 +375,19 @@
 	}
 
 	.image-cropper {
-		width: 50px;
-		height: 50px;
+		width: 40px;
+		height: 40px;
 		overflow: hidden;
 		border-radius: 50%;
 		user-select: none;
+		flex: 0 0 40px;
+		background: #789a62;
+		border: 2px solid #f2f1e7;
 	}
 
-	.shadow {
-		box-shadow: 0px 10px 10px rgba(0, 0, 0, 0.25);
+	.profile-pic {
+		padding: 0;
+		cursor: pointer;
 	}
 
 	canvas {
@@ -293,7 +398,8 @@
 		display: inline;
 		margin: 0 auto;
 		height: 100%;
-		width: auto;
+		width: 100%;
+		object-fit: cover;
 	}
 
 	p {
@@ -308,20 +414,28 @@
 	}
 
 	.play {
+		display: inline-block;
+		border: 0;
+		padding: 0;
+		background: transparent;
 		cursor: pointer;
 		color: gray;
 		text-align: center;
-		font-size: 30px;
+		font-size: 20px;
 		user-select: none;
 	}
 
 	@media (max-width: 500px) {
-		.profile-pic {
-			display: none;
-		}
-
 		.chat {
 			max-width: 100%;
+		}
+
+		.align {
+			padding: 5px 10px;
+		}
+
+		.quick-menu {
+			display: none;
 		}
 
 		.quick-menu {

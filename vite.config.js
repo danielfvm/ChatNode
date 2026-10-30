@@ -1,8 +1,16 @@
-import {sveltekit} from '@sveltejs/kit/vite';
-import {defineConfig} from 'vite';
-import mkcert from 'vite-plugin-mkcert'
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+import adapter from '@sveltejs/adapter-static';
+
+const dev = process.argv.includes('dev');
 
 export default defineConfig({
-	server: {https: true},
-	plugins: [sveltekit(), mkcert()]
+	plugins: [
+		sveltekit({
+			adapter: adapter(),
+			paths: {
+				base: dev ? '' : process.env.BASE_PATH
+			}
+		})
+	]
 });

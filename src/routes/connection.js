@@ -1,7 +1,7 @@
 // update profile
 // have multiple peers in url
 
-import defaultProfilePicture from '$lib/images/profile.png';
+import defaultProfilePicture from '#lib/images/profile.png';
 
 export function tryParse(data) {
     try {
@@ -97,7 +97,12 @@ export class User {
                 break;
 
             case 'message':
-                this.chat.writeMessage(new MessageData(message.data || "", this));
+                this.chat.writeMessage(new MessageData(message.data || '', this, message.attachments));
+                break;
+
+            case 'rename_chat':
+                this.chat.name = this.chat.normalizeName(message.name);
+                this.chat.onUserChange(this);
                 break;
 
             case 'ping':
@@ -117,14 +122,15 @@ export class User {
 }
 
 export class MessageData {
-    constructor(data, user) {
+    constructor(data, user, attachments = []) {
         this.time = new Date();
         this.user = user;
+        this.attachments = attachments;
         this.data = data;
     }
 
     set data(data) {
-        this._data = data.trim().substring(0, 1024 * 1024);
+        this._data = String(data || '').trim().substring(0, 1024 * 1024);
 
         // extract tenor urls
         this._gifs = this._data.match(/(https?:\/\/media.tenor.com\/[^\s]+)/g) || [];
@@ -157,6 +163,41 @@ export class MessageData {
 
     get pngs() {
         return this._pngs;
+    }
+
+    get attachments() {
+        return this._attachments;
+    }
+
+    set attachments(attachments) {
+        this._attachments = [];
+        if (!Array.isArray(attachments)) return;
+
+        let totalSize = 0;
+        for (const attachment of attachments.slice(0, 10)) {
+            if (
+                !attachment ||
+                typeof attachment.name !== 'string' ||
+                typeof attachment.type !== 'string' ||
+                typeof attachment.data !== 'string' ||
+                !Number.isFinite(attachment.size) ||
+                attachment.size <= 0 ||
+                attachment.size > 5 * 1024 * 1024 ||
+                totalSize + attachment.size > 5 * 1024 * 1024 ||
+                attachment.data.length > 7 * 1024 * 1024 ||
+                !/^data:[\w.+-]+\/[\w.+-]+;base64,[A-Za-z0-9+/]*={0,2}$/.test(attachment.data)
+            ) {
+                continue;
+            }
+
+            totalSize += attachment.size;
+            this._attachments.push({
+                name: attachment.name.slice(0, 255),
+                type: attachment.type.slice(0, 100),
+                size: attachment.size,
+                data: attachment.data
+            });
+        }
     }
 
     get program() {
@@ -218,9 +259,31 @@ export class Chat {
         this.messages.push(msg);
         this.onMessage(msg);
         if (this.profile == msg.profile) {
-            this.users.forEach(user => user.sendData({type: 'message', data: msg.data}));
+            this.users.forEach(user =>
+                user.sendData({
+                    type: 'message',
+                    data: msg.data,
+                    attachments: msg.attachments
+                })
+            );
             console.log("send to " + this.users.length);
         }
+    }
+
+    normalizeName(name) {
+        return typeof name === 'string'
+            ? name.trim().replace(/:/g, '').slice(0, 40) || this.name
+            : this.name;
+    }
+
+    rename(name) {
+        const nextName = this.normalizeName(name);
+        if (nextName === this.name) return false;
+
+        this.name = nextName;
+        this.broadcast({ type: 'rename_chat', name: nextName });
+        this.onUserChange(null);
+        return true;
     }
 
     // Remove user and close connection 
